@@ -4,7 +4,7 @@ import "./globals.css";
 
 // Particle imports
 import { AuthType } from "@particle-network/auth-core";
-import { BaseSepolia, EthereumSepolia } from "@particle-network/chains";
+import { Base, EthereumHolesky, PolygonAmoy } from "@particle-network/chains";
 import { AuthCoreContextProvider } from "@particle-network/auth-core-modal";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -44,8 +44,8 @@ export default function RootLayout({
               // Set to false to remove the embedded wallet modal
               visible: true,
               customStyle: {
-                // Locks the chain selector to Base Sepolia and EthereumSepolia
-                supportChains: [BaseSepolia, EthereumSepolia],
+                // Locks the chain selector to Base Sepolia and EthereumHolesky
+                supportChains: [PolygonAmoy, EthereumHolesky],
               },
             },
           }}

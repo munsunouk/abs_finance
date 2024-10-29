@@ -1,50 +1,55 @@
-import Head from "next/head";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
+import { useConnect, useAuthCore } from "@particle-network/auth-core-modal";
 
 const Header: React.FC = () => {
-  // Links, metadata and titles for the Header component
-  const headContent = {
-    title: "Particle Auth Core App",
-    metaDescription:
-      "Particle Auth with Account Abstraction Code demo in Next js",
-    favicon: "/favicon.ico",
-  };
+  const { connect, disconnect } = useConnect();
+  const { userInfo } = useAuthCore();
+  const [isClient, setIsClient] = useState(false);
 
-  const mainHeading = {
-    text: "Welcome to",
-    linkHref: "https://particle.network",
-    linkImageSrc: "/dark.png",
-    linkImageAlt: "Particle Logo",
-    linkImageWidth: 240,
-    linkImageHeight: 24,
-  };
-
-  const subHeading =
-    "Connect with social logins using Particle Auth and send a transaction using the Account Abstraction SDK.";
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   return (
-    <>
-      <Head>
-        <title>{headContent.title}</title>
-        <meta name="description" content={headContent.metaDescription} />
-        <link rel="icon" href={headContent.favicon} />
-      </Head>
-      <h1 className="text-4xl mt-4 font-bold mb-12 text-center flex items-center justify-center">
-        {mainHeading.text}
-        <a
-          href={mainHeading.linkHref}
-          className="text-purple-400 hover:text-purple-300 transition duration-300 ml-2"
-        >
-          <Image
-            src={mainHeading.linkImageSrc}
-            alt={mainHeading.linkImageAlt}
-            width={mainHeading.linkImageWidth}
-            height={mainHeading.linkImageHeight}
-          />
-        </a>
-      </h1>
-      <h2 className="text-xl font-bold mb-6">{subHeading}</h2>
-    </>
+    <header className="bg-gray-800 py-4">
+      <div className="container mx-auto px-4 flex justify-between items-center">
+        <div className="text-2xl font-bold">ABS Finance</div>
+        <nav>
+          <ul className="flex space-x-4">
+            <li>
+              <a href="#" className="hover:text-purple-400">
+                Markets
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-purple-400">
+                Stake
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-purple-400">
+                Portfolio
+              </a>
+            </li>
+          </ul>
+        </nav>
+        {isClient && !userInfo ? (
+          <button
+            onClick={() => connect({})}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Connect Wallet
+          </button>
+        ) : (
+          <button
+            onClick={() => disconnect()}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Disconnect
+          </button>
+        )}
+      </div>
+    </header>
   );
 };
 
