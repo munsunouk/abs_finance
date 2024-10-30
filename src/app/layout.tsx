@@ -4,7 +4,7 @@ import "./globals.css";
 
 // Particle imports
 import { AuthType } from "@particle-network/auth-core";
-import { Base, EthereumHolesky, PolygonAmoy } from "@particle-network/chains";
+import { Base, EthereumHolesky, Solana } from "@particle-network/chains";
 import { AuthCoreContextProvider } from "@particle-network/auth-core-modal";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -45,7 +45,7 @@ export default function RootLayout({
               visible: true,
               customStyle: {
                 // Locks the chain selector to Base Sepolia and EthereumHolesky
-                supportChains: [PolygonAmoy, EthereumHolesky],
+                supportChains: [Solana, EthereumHolesky, Base],
               },
             },
           }}
