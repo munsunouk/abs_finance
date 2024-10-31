@@ -1,9 +1,9 @@
 "use client";
 import React from "react";
-import LidoStakingPage from "@/app/components/LidoStakingPage";
+import ListaStakingPage from "@/app/components/ListaStakingPage";
 
 const StakingAssetPage = ({ params }: { params: { asset: string } }) => {
-  return <LidoStakingPage />;
+  return <ListaStakingPage />;
 };
 
 export default StakingAssetPage;

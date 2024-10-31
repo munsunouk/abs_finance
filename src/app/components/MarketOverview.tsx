@@ -5,7 +5,7 @@ const MarketOverview: React.FC = () => {
   const markets = [
     { name: "ETH", apy: "5.2%", tvl: "$1.2B" },
     { name: "SuperOETH", apy: "4.8%", tvl: "$980M" },
-    { name: "SOL", apy: "6.1%", tvl: "$450M" },
+    { name: "BNB", apy: "6.1%", tvl: "$450M" },
   ];
 
   return (

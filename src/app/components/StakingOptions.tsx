@@ -5,7 +5,7 @@ const StakingOptions: React.FC = () => {
   const options = [
     { name: "ETH Staking", apy: "5.5%", minStake: "0.01 ETH" },
     { name: "SuperOETH Staking", apy: "4.2%", minStake: "0.01 ETH" },
-    { name: "SOL Staking", apy: "6.8%", minStake: "10 SOL" },
+    { name: "BNB Staking", apy: "6.8%", minStake: "10 BNB" },
   ];
 
   return (
