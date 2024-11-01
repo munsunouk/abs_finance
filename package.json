@@ -21,8 +21,7 @@
     "react": "^18",
     "react-dom": "^18",
     "viem": "^2.16.5",
-    "web3": "^4.10.0",
-    "@jup-ag/api": "^1.0.0"
+    "web3": "^4.10.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",

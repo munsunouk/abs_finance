@@ -2100,11 +2100,6 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@jup-ag/api@^1.0.0":
-  version "6.0.29"
-  resolved "https://registry.yarnpkg.com/@jup-ag/api/-/api-6.0.29.tgz#117c386d6b252465549a6073625e27ff806dfb5d"
-  integrity sha512-1gUY1txmL/gG14VDZMjeKVqhSzeg4L2cImdC7dGLYB5DP5D5lwpR+FarvhqehEi+63/RWOUKTTU4fablGpeIUQ==
-
 "@lidofinance/lido-ethereum-sdk@^3.4.0":
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/@lidofinance/lido-ethereum-sdk/-/lido-ethereum-sdk-3.4.0.tgz#8da4e41bf5d045e50017345bf12a363c17a5273d"
