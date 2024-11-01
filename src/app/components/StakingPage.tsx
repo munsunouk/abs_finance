@@ -655,17 +655,14 @@ const StakingPage: React.FC = () => {
                     : "0"}
                 </div>
                 <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
-                  <div className="relative w-6 h-6 mr-2">
-                    <Image
-                      src={`/icon-${selectedToken.toLowerCase()}.svg`}
-                      alt={`${selectedToken}`}
-                      fill
-                      sizes="24px"
-                      style={{ objectFit: "contain" }}
-                      priority
-                    />
-                  </div>
-                  <span>{`${selectedToken}`}</span>
+                  <Image
+                    src={`/icon-${selectedToken.toLowerCase()}.svg`}
+                    alt={`${selectedToken} Icon`}
+                    width={24}
+                    height={24}
+                    className="mr-2"
+                  />
+                  <span>{selectedToken}</span>
                 </div>
               </div>
               <div className="flex justify-between text-gray-400 text-sm">
