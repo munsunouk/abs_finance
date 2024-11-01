@@ -656,7 +656,7 @@ const StakingPage: React.FC = () => {
                 </div>
                 <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
                   <Image
-                    src={`/icon-${selectedToken.toLowerCase()}.svg`}
+                    src={`/icon-${selectedToken}.svg`}
                     alt={`${selectedToken} Icon`}
                     width={24}
                     height={24}
