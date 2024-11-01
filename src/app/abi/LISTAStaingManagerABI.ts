@@ -25,4 +25,11 @@ export const LISTAStaingManagerABI = [
     name: "Deposit",
     type: "event",
   },
+  {
+    inputs: [{ internalType: "uint256", name: "_amount", type: "uint256" }],
+    name: "convertBnbToSnBnb",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
