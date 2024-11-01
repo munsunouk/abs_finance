@@ -24,16 +24,6 @@ const Home: NextPage = () => {
         </div>
       </div>
 
-      {/* Network Status */}
-      <div className="absolute top-0 right-0 m-6">
-        <div className="flex items-center gap-2 bg-white/5 rounded-full px-4 py-2">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-          <span className="text-sm">Mainnet</span>
-          <span className="text-sm text-white/60">|</span>
-          <span className="text-sm text-white/60">Priority Fees: Dynamic</span>
-        </div>
-      </div>
-
       {/* Main Content */}
       <main className="flex-grow pt-24">
         <StakingPage />
