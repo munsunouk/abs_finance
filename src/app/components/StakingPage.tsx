@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import {
   useAuthCore,
@@ -18,6 +18,7 @@ import { useLidoStaking } from "@/app/components/staking/LidoStaking";
 import { useSuperOETHStaking } from "@/app/components/staking/SuperOETHStaking";
 import { useListaStaking } from "@/app/components/staking/ListaStaking";
 import { LISTAStaingManagerABI } from "@/app/abi/LISTAStaingManagerABI";
+import Image from "next/image";
 
 const StakingPage: React.FC = () => {
   const [selectedToken, setSelectedToken] = useState("stETH");
@@ -56,7 +57,7 @@ const StakingPage: React.FC = () => {
 
   const gasLimit = 200000;
 
-  const getChainId = () => {
+  const getChainId = useCallback(() => {
     switch (selectedToken) {
       case "stETH":
         return EthereumHolesky.id;
@@ -67,7 +68,7 @@ const StakingPage: React.FC = () => {
       default:
         return EthereumHolesky.id;
     }
-  };
+  }, [selectedToken]);
 
   useEffect(() => {
     if (provider) {
@@ -95,7 +96,7 @@ const StakingPage: React.FC = () => {
       setSmartAccount(newSmartAccount);
       setCustomProvider(newCustomProvider);
     }
-  }, [provider, selectedToken]);
+  }, [provider, selectedToken, getChainId]);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -111,32 +112,29 @@ const StakingPage: React.FC = () => {
       }
     };
     fetchBalance();
-  }, [userInfo, selectedToken, smartAccount, customProvider]);
+  }, [userInfo, selectedToken, smartAccount, customProvider, provider]);
 
-  const fetchLidoAPR = async () => {
+  const fetchLidoAPR = useCallback(async () => {
     try {
       const response = await fetch(
         "https://eth-api-holesky.testnet.fi/v1/protocol/steth/apr/sma"
       );
       const data = await response.json();
-
       const aprValue = data.data.smaApr;
       return aprValue.toFixed(2) + "%";
     } catch (error) {
       console.error("Lido APR 조회 실패:", error);
       return "0%";
     }
-  };
+  }, []);
 
-  const fetchSuperOETHAPY = async () => {
+  const fetchSuperOETHAPY = useCallback(async () => {
     try {
       const response = await fetch(
         "https://origin.squids.live/origin-squid:prod/api/graphql",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query: `
               query OTokenApy($chainId: Int!, $token: String!) {
@@ -146,10 +144,6 @@ const StakingPage: React.FC = () => {
                   where: {chainId_eq: $chainId, otoken_eq: $token}
                 ) {
                   apy7DayAvg
-                  apy14DayAvg
-                  apy30DayAvg
-                  apr
-                  apy
                 }
               }
             `,
@@ -160,7 +154,6 @@ const StakingPage: React.FC = () => {
           }),
         }
       );
-
       const data = await response.json();
       const apyData = data.data.oTokenApies[0];
       return (apyData.apy7DayAvg * 100).toFixed(2) + "%";
@@ -168,15 +161,14 @@ const StakingPage: React.FC = () => {
       console.error("SuperOETH APY 조회 실패:", error);
       return "0%";
     }
-  };
+  }, []);
 
-  const fetchListaAPY = async () => {
+  const fetchListaAPY = useCallback(async () => {
     try {
       const response = await fetch(
         "https://api.lista.org/v1/stakes/latest-apr"
       );
       const data = await response.json();
-
       if (data.code === "000000000") {
         const aprValue = parseFloat(data.data.apr);
         return (aprValue * 100).toFixed(2) + "%";
@@ -186,32 +178,34 @@ const StakingPage: React.FC = () => {
       console.error("Lista APY 조회 실패:", error);
       return "0%";
     }
-  };
-
-  const updateAllAPYs = async () => {
-    setIsApyLoading(true);
-    try {
-      const [lidoApy, superOETHApy, listaApy] = await Promise.all([
-        fetchLidoAPR(),
-        fetchSuperOETHAPY(),
-        fetchListaAPY(),
-      ]);
-
-      setApyRates({
-        stETH: lidoApy,
-        superOETH: superOETHApy,
-        slisBNB: listaApy,
-      });
-    } finally {
-      setIsApyLoading(false);
-    }
-  };
+  }, []);
 
   useEffect(() => {
-    updateAllAPYs();
-    const interval = setInterval(updateAllAPYs, 300000);
-    return () => clearInterval(interval);
-  }, []);
+    const fetchSelectedTokenAPR = async () => {
+      setIsApyLoading(true);
+      try {
+        let apr: string;
+        switch (selectedToken) {
+          case "stETH":
+            apr = await fetchLidoAPR();
+            setApyRates((prev) => ({ ...prev, stETH: apr }));
+            break;
+          case "superOETH":
+            apr = await fetchSuperOETHAPY();
+            setApyRates((prev) => ({ ...prev, superOETH: apr }));
+            break;
+          case "slisBNB":
+            apr = await fetchListaAPY();
+            setApyRates((prev) => ({ ...prev, slisBNB: apr }));
+            break;
+        }
+      } finally {
+        setIsApyLoading(false);
+      }
+    };
+
+    fetchSelectedTokenAPR();
+  }, [selectedToken, fetchLidoAPR, fetchSuperOETHAPY, fetchListaAPY]);
 
   const tokenDisplayNames: { [key: string]: string } = {
     stETH: "ETH",
@@ -279,6 +273,30 @@ const StakingPage: React.FC = () => {
     return totalCost;
   };
 
+  const lidoStaking = useLidoStaking({
+    provider,
+    smartAccount,
+    customProvider,
+    amount,
+    setStakeResult,
+  });
+
+  const superOETHStaking = useSuperOETHStaking({
+    provider,
+    smartAccount,
+    customProvider,
+    amount,
+    setStakeResult,
+  });
+
+  const listaStaking = useListaStaking({
+    provider,
+    smartAccount,
+    customProvider,
+    amount,
+    setStakeResult,
+  });
+
   const handleStake = async () => {
     try {
       await calculateTotalCost(amount, gasLimit);
@@ -289,43 +307,22 @@ const StakingPage: React.FC = () => {
       }
 
       if (!provider || !smartAccount || !customProvider) {
-        throw new Error("Provider가 초기화되지 않았습니다");
+        throw new Error("Provider가 초기화되 않았습니다");
       }
 
       let transactionHash = "";
 
       switch (selectedToken) {
         case "stETH":
-          const lidoStaking = useLidoStaking({
-            provider,
-            smartAccount,
-            customProvider,
-            amount,
-            setStakeResult,
-          });
           transactionHash = await lidoStaking.stakeEth(amount, customProvider);
           break;
         case "superOETH":
-          const superOETHStaking = useSuperOETHStaking({
-            provider,
-            smartAccount,
-            customProvider,
-            amount,
-            setStakeResult,
-          });
           transactionHash = await superOETHStaking.stakeEth(
             amount,
             customProvider
           );
           break;
         case "slisBNB":
-          const listaStaking = useListaStaking({
-            provider,
-            smartAccount,
-            customProvider,
-            amount,
-            setStakeResult,
-          });
           transactionHash = await listaStaking.stakeBnb(amount, customProvider);
           break;
       }
@@ -445,7 +442,7 @@ const StakingPage: React.FC = () => {
     }
   };
 
-  // 개별 토큰 환율 조회 함수들
+  // 개별 토큰 환율 조회 함수
   const fetchStEthRate = async () => {
     try {
       const response = await fetch(
@@ -495,7 +492,7 @@ const StakingPage: React.FC = () => {
     }
   };
 
-  const fetchSlisBnbRate = async () => {
+  const fetchSlisBnbRate = useCallback(async () => {
     try {
       if (!provider) return 0.95;
 
@@ -513,7 +510,7 @@ const StakingPage: React.FC = () => {
       console.error("slisBNB 환율 조회 실패:", error);
       return 0.95;
     }
-  };
+  }, [provider]);
 
   // 선택된 토큰에 따라 해당하는 환율만 조회
   useEffect(() => {
@@ -546,7 +543,7 @@ const StakingPage: React.FC = () => {
     };
 
     fetchSelectedTokenRate();
-  }, [selectedToken, provider]);
+  }, [selectedToken, provider, fetchSlisBnbRate]);
 
   return (
     <div className="container mx-auto p-4 sm:p-8 max-w-4xl">
@@ -577,10 +574,12 @@ const StakingPage: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-2 w-full justify-center">
-                <img
+                <Image
                   src={`/icon-${token.name}.svg`}
                   alt={`${token.name}`}
-                  className="w-6 h-6 mr-2"
+                  width={24}
+                  height={24}
+                  className="mr-2"
                 />
                 {token.name}
               </div>
@@ -598,7 +597,7 @@ const StakingPage: React.FC = () => {
               {isApyLoading ? (
                 <span className="inline-block animate-pulse">로딩 중...</span>
               ) : (
-                tokens.find((t) => t.id === selectedToken)?.apy
+                apyRates[selectedToken]
               )}
             </p>
           </div>
@@ -622,12 +621,14 @@ const StakingPage: React.FC = () => {
                     MAX
                   </button>
                   <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
-                    <img
+                    <Image
                       src={`/icon-${tokenDisplayNames[
                         selectedToken
                       ].toLowerCase()}.svg`}
                       alt={`${tokenDisplayNames[selectedToken]} Icon`}
-                      className="w-6 h-6 mr-2"
+                      width={24}
+                      height={24}
+                      className="mr-2"
                     />
                     <span>{tokenDisplayNames[selectedToken]}</span>
                   </div>
@@ -654,10 +655,12 @@ const StakingPage: React.FC = () => {
                     : "0"}
                 </div>
                 <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
-                  <img
+                  <Image
                     src={`/icon-${selectedToken.toLowerCase()}.svg`}
                     alt={`${selectedToken}`}
-                    className="w-6 h-6 mr-2"
+                    width={24}
+                    height={24}
+                    className="mr-2"
                   />
                   <span>{`${selectedToken}`}</span>
                 </div>

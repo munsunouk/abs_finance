@@ -50,9 +50,11 @@ const LinksGrid = () => {
           rel="noopener noreferrer"
           className="text-white hover:text-purple-300 transition duration-300 flex items-center"
         >
-          <img
+          <Image
             src={repositoryLink.imgSrc}
             alt={repositoryLink.imgAlt}
+            width={24}
+            height={24}
             className="w-6 h-6 mr-2"
           />
           {repositoryLink.text}
