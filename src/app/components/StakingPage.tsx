@@ -622,9 +622,7 @@ const StakingPage: React.FC = () => {
                   </button>
                   <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
                     <Image
-                      src={`/icon-${tokenDisplayNames[
-                        selectedToken
-                      ].toLowerCase()}.svg`}
+                      src={`/icon-${tokenDisplayNames[selectedToken]}.svg`}
                       alt={`${tokenDisplayNames[selectedToken]} Icon`}
                       width={24}
                       height={24}
