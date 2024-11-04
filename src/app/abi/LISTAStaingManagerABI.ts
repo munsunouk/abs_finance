@@ -32,4 +32,17 @@ export const LISTAStaingManagerABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "_amountInBnbX",
+        type: "uint256"
+      }
+    ],
+    name: "requestWithdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  }
 ] as const;

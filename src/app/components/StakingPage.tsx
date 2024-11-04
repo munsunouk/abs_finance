@@ -23,11 +23,11 @@ import Image from "next/image";
 const StakingPage: React.FC = () => {
   const [selectedToken, setSelectedToken] = useState("stETH");
   const [amount, setAmount] = useState("");
-  const { provider, address, chainInfo } = useEthereum();
+  const { provider, address, chainInfo, signTypedData } = useEthereum();
   const { connect, disconnect } = useConnect();
   const { userInfo } = useAuthCore();
-  const [stakeResult, setStakeResult] = useState("");
-  // const particleProvider = useParticleProvider();
+  const [TxResult, setTxResult] = useState("");
+  const [withdrawResult, setWithdrawResult] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [apyRates, setApyRates] = useState<{ [key: string]: string }>({
     stETH: "0%",
@@ -45,11 +45,14 @@ const StakingPage: React.FC = () => {
   );
   const [exchangeRates, setExchangeRates] = useState<{ [key: string]: number }>(
     {
-      stETH: 0.95,
-      superOETH: 0.95,
-      slisBNB: 0.95,
+      stETH: 1,
+      superOETH: 1,
+      slisBNB: 1,
     }
   );
+  const [activeView, setActiveView] = useState<"stake" | "unstake">("stake");
+  const [stakedBalance, setStakedBalance] = useState<string>("0");
+  const [outputBalance, setOutputBalance] = useState<string>("0");
 
   useEffect(() => {
     setMounted(true);
@@ -251,7 +254,7 @@ const StakingPage: React.FC = () => {
     const address = await smartAccount?.getAddress();
 
     if (!address) {
-      throw new Error("주소를 가져올 수 없습니다");
+      throw new Error("주소 가져올 수 없습니다");
     }
 
     const gasPrice = await ethersProvider.getGasPrice();
@@ -278,7 +281,7 @@ const StakingPage: React.FC = () => {
     smartAccount,
     customProvider,
     amount,
-    setStakeResult,
+    setTxHash,
   });
 
   const superOETHStaking = useSuperOETHStaking({
@@ -286,7 +289,7 @@ const StakingPage: React.FC = () => {
     smartAccount,
     customProvider,
     amount,
-    setStakeResult,
+    setTxHash,
   });
 
   const listaStaking = useListaStaking({
@@ -294,7 +297,7 @@ const StakingPage: React.FC = () => {
     smartAccount,
     customProvider,
     amount,
-    setStakeResult,
+    setTxHash: setTxResult,
   });
 
   const handleStake = async () => {
@@ -328,7 +331,7 @@ const StakingPage: React.FC = () => {
       }
 
       setTxHash(transactionHash);
-      toast.success("스테이킹이 성공적으로 완료되었습니다.", {
+      toast.success("스테이킹이 성공적으로 완료되었습니.", {
         position: "bottom-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -449,10 +452,10 @@ const StakingPage: React.FC = () => {
         "https://eth-api.lido.fi/v1/swap/one-inch?token=ETH"
       );
       const data = await response.json();
-      return data.rate || 0.95;
+      return data.rate || 1;
     } catch (error) {
       console.error("stETH 환율 조회 실패:", error);
-      return 0.95;
+      return 1;
     }
   };
 
@@ -488,13 +491,13 @@ const StakingPage: React.FC = () => {
       return parseFloat(ethers.utils.formatUnits(rateETHWei, 18));
     } catch (error) {
       console.error("superOETH 환율 조회 실패:", error);
-      return 0.95;
+      return 1;
     }
   };
 
   const fetchSlisBnbRate = useCallback(async () => {
     try {
-      if (!provider) return 0.95;
+      if (!provider) return 1;
 
       const ethersProvider = new ethers.providers.Web3Provider(provider as any);
       const listaContract = new ethers.Contract(
@@ -508,7 +511,7 @@ const StakingPage: React.FC = () => {
       return parseFloat(ethers.utils.formatEther(slisBNBAmount));
     } catch (error) {
       console.error("slisBNB 환율 조회 실패:", error);
-      return 0.95;
+      return 1;
     }
   }, [provider]);
 
@@ -545,12 +548,148 @@ const StakingPage: React.FC = () => {
     fetchSelectedTokenRate();
   }, [selectedToken, provider, fetchSlisBnbRate]);
 
+  const handleUnstake = async () => {
+    if (!userInfo || !provider) return;
+
+    try {
+      await calculateTotalCost("0", gasLimit);
+      setIsLoading(true);
+      if (!userInfo) {
+        await connect({});
+        return;
+      }
+
+      if (!provider || !smartAccount || !customProvider) {
+        throw new Error("Provider가 초기화되 않았습니다");
+      }
+
+      let transactionHash = "";
+
+      // 각 토큰별 스테이킹 컴포넌트 사용
+      switch (selectedToken) {
+        case "stETH":
+          transactionHash = await lidoStaking.unstake(
+            amount,
+            customProvider,
+            signTypedData
+          );
+          break;
+        case "superOETH":
+          transactionHash = await superOETHStaking.unstake(
+            amount,
+            customProvider
+          );
+          break;
+        case "slisBNB":
+          transactionHash = await listaStaking.unstake(amount, customProvider);
+          break;
+      }
+
+      setTxHash(transactionHash);
+      toast.success("언스테이킹이 성공적으로 완료되었습니다.", {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+    } catch (error) {
+      console.error(`언스테이킹 실패: ${error}`);
+      toast.error("언스테이킹 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchStakedBalance = async () => {
+      if (userInfo && provider && smartAccount && customProvider) {
+        try {
+          let balance = 0;
+          switch (selectedToken) {
+            case "stETH":
+              balance = await lidoStaking.fetchStakedBalance();
+              break;
+            case "superOETH":
+              balance = await superOETHStaking.fetchStakedBalance();
+              break;
+            case "slisBNB":
+              balance = await listaStaking.fetchStakedBalance();
+              break;
+          }
+          setStakedBalance(balance.toString());
+        } catch (error) {
+          console.error("스테이킹된 잔액 조회 실패:", error);
+          setStakedBalance("0");
+        }
+      }
+    };
+    fetchStakedBalance();
+  }, [userInfo, selectedToken, smartAccount, customProvider, provider]);
+
+  useEffect(() => {
+    const fetchOutputBalance = async () => {
+      if (userInfo && provider && smartAccount && customProvider) {
+        try {
+          let balance = 0;
+          if (activeView === "stake") {
+            // 스테이킹 시에는 스테이킹된 토큰 잔액을 보여줌
+            switch (selectedToken) {
+              case "stETH":
+                balance = await lidoStaking.fetchStakedBalance();
+                break;
+              case "superOETH":
+                balance = await superOETHStaking.fetchStakedBalance();
+                break;
+              case "slisBNB":
+                balance = await listaStaking.fetchStakedBalance();
+                break;
+            }
+          } else {
+            // 언스테이킹 시에는 네이티브 토큰 잔액을 보여줌
+            const address = await smartAccount.getAddress();
+            const balanceResponse = await customProvider.getBalance(address);
+            balance = parseFloat(ethers.utils.formatEther(balanceResponse));
+          }
+          setOutputBalance(balance.toString());
+        } catch (error) {
+          console.error("출력 토큰 잔액 조회 실패:", error);
+          setOutputBalance("0");
+        }
+      }
+    };
+    fetchOutputBalance();
+  }, [
+    userInfo,
+    selectedToken,
+    activeView,
+    smartAccount,
+    customProvider,
+    provider,
+  ]);
+
+  const getInputToken = (activeView: string, selectedToken: string) => {
+    if (activeView === "stake") {
+      return tokenDisplayNames[selectedToken];
+    }
+    return selectedToken;
+  };
+
+  const getOutputToken = (activeView: string, selectedToken: string) => {
+    if (activeView === "stake") {
+      return selectedToken;
+    }
+    return tokenDisplayNames[selectedToken];
+  };
+
   return (
     <div className="container mx-auto p-4 sm:p-8 max-w-4xl">
       <div className="bg-white/5 rounded-3xl p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-0">
-            Super Stake Finance
+            Liquidity Staking
           </h1>
           {mounted && (
             <button
@@ -588,9 +727,28 @@ const StakingPage: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          <div className="flex bg-white/5 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveView("stake")}
+              className={`flex-1 py-2 rounded-lg font-medium transition-all ${
+                activeView === "stake" ? "bg-purple-500" : "hover:bg-white/10"
+              }`}
+            >
+              Stake
+            </button>
+            <button
+              onClick={() => setActiveView("unstake")}
+              className={`flex-1 py-2 rounded-lg font-medium transition-all ${
+                activeView === "unstake" ? "bg-purple-500" : "hover:bg-white/10"
+              }`}
+            >
+              Unstake
+            </button>
+          </div>
+
           <div>
             <h2 className="text-xl font-semibold mb-2">
-              {selectedToken} Staking
+              {selectedToken} {activeView === "stake" ? "Staking" : "Unstaking"}
             </h2>
             <p className="text-white/60">
               APR:{" "}
@@ -603,7 +761,9 @@ const StakingPage: React.FC = () => {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Stake</h2>
+            <h2 className="text-2xl font-bold mb-4">
+              {activeView === "stake" ? "Stake" : "Unstake"}
+            </h2>
             <div className="bg-white/5 rounded-xl p-4">
               <div className="flex items-center justify-between mb-4">
                 <input
@@ -615,28 +775,38 @@ const StakingPage: React.FC = () => {
                 />
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setAmount(balance)}
+                    onClick={() =>
+                      setAmount(
+                        activeView === "stake" ? balance : stakedBalance
+                      )
+                    }
                     className="text-sm bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20"
                   >
                     MAX
                   </button>
                   <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
                     <Image
-                      src={`/icon-${tokenDisplayNames[selectedToken]}.svg`}
-                      alt={`${tokenDisplayNames[selectedToken]} Icon`}
+                      src={`/icon-${getInputToken(
+                        activeView,
+                        selectedToken
+                      )}.svg`}
+                      alt={`${getInputToken(activeView, selectedToken)} Icon`}
                       width={24}
                       height={24}
                       className="mr-2"
                     />
-                    <span>{tokenDisplayNames[selectedToken]}</span>
+                    <span>{getInputToken(activeView, selectedToken)}</span>
                   </div>
                 </div>
               </div>
               <div className="flex justify-between text-gray-400 text-sm">
-                <span className={error ? "text-red-500" : "text-gray-400"}>
-                  {error || (amount ? "" : "Amount to stake")}
+                <span>{error || `Amount to ${activeView}`}</span>
+                <span>
+                  Balance:{" "}
+                  {parseFloat(
+                    activeView === "stake" ? balance : stakedBalance
+                  ).toFixed(4)}
                 </span>
-                <span>Balance: {parseFloat(balance).toFixed(4)}</span>
               </div>
             </div>
           </div>
@@ -654,60 +824,52 @@ const StakingPage: React.FC = () => {
                 </div>
                 <div className="flex items-center bg-white/10 rounded-lg px-4 py-2 w-[140px] justify-center">
                   <Image
-                    src={`/icon-${selectedToken}.svg`}
-                    alt={`${selectedToken} Icon`}
+                    src={`/icon-${getOutputToken(
+                      activeView,
+                      selectedToken
+                    )}.svg`}
+                    alt={`${getOutputToken(activeView, selectedToken)} Icon`}
                     width={24}
                     height={24}
                     className="mr-2"
                   />
-                  <span>{selectedToken}</span>
+                  <span>{getOutputToken(activeView, selectedToken)}</span>
                 </div>
               </div>
               <div className="flex justify-between text-gray-400 text-sm">
-                <span>
-                  ${amount ? (parseFloat(amount) * 2508.2).toFixed(2) : "0.00"}
-                </span>
-                <span>Balance: 0.0000</span>
+                <span>예상 수량</span>
+                <span>Balance: {parseFloat(outputBalance).toFixed(4)}</span>
               </div>
             </div>
           </div>
 
           <div className="flex justify-between text-gray-400 text-sm mb-8">
-            <span>Exchange Rate</span>
+            <span>환율</span>
             <span>
-              1 {tokenDisplayNames[selectedToken]} ={" "}
-              {exchangeRates[selectedToken]} {selectedToken}
+              1 {getInputToken(activeView, selectedToken)} ={" "}
+              {exchangeRates[selectedToken]}{" "}
+              {getOutputToken(activeView, selectedToken)}
             </span>
           </div>
 
-          <div className="flex gap-4">
-            <button
-              onClick={handleStake}
-              disabled={isLoading || !amount || !userInfo || !!error}
-              className={`flex-1 py-4 rounded-xl font-medium ${
-                isLoading || !amount || !userInfo || !!error
-                  ? "bg-purple-500/50 cursor-not-allowed"
-                  : "bg-purple-500 hover:bg-purple-600"
-              }`}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                  스테이킹 중...
-                </div>
-              ) : (
-                error || "Stake"
-              )}
-            </button>
-            <button
-              onClick={() => {
-                /* Implement unstake logic */
-              }}
-              className="flex-1 bg-white/10 hover:bg-white/20 py-4 rounded-xl font-medium"
-            >
-              Unstake
-            </button>
-          </div>
+          <button
+            onClick={activeView === "stake" ? handleStake : handleUnstake}
+            disabled={isLoading || !amount || !userInfo || !!error}
+            className={`w-full py-4 rounded-xl font-medium ${
+              isLoading || !amount || !userInfo || !!error
+                ? "bg-purple-500/50 cursor-not-allowed"
+                : "bg-purple-500 hover:bg-purple-600"
+            }`}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                {activeView === "stake" ? "스테이킹 중..." : "언스테이킹 중..."}
+              </div>
+            ) : (
+              error || (activeView === "stake" ? "Stake" : "Unstake")
+            )}
+          </button>
         </div>
       </div>
 

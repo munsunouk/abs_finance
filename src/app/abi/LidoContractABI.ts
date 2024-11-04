@@ -694,6 +694,39 @@ export const StethAbi = [
     name: 'ContractVersionSet',
     type: 'event',
   },
+  {
+    constant: true,
+    inputs: [{ name: "owner", type: "address" }],
+    name: "nonces",
+    outputs: [{ name: "", type: "uint256" }],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+
+  {
+    "inputs": [
+        { "internalType": "uint256[]", "name": "_amounts", "type": "uint256[]" },
+        { "internalType": "address", "name": "_owner", "type": "address" },
+        {
+            "components": [
+                { "internalType": "uint256", "name": "value", "type": "uint256" },
+                { "internalType": "uint256", "name": "deadline", "type": "uint256" },
+                { "internalType": "uint8", "name": "v", "type": "uint8" },
+                { "internalType": "bytes32", "name": "r", "type": "bytes32" },
+                { "internalType": "bytes32", "name": "s", "type": "bytes32" }
+            ],
+            "internalType": "struct WithdrawalQueue.PermitInput",
+            "name": "_permit",
+            "type": "tuple"
+        }
+    ],
+    "name": "requestWithdrawalsWithPermit",
+    "outputs": [{ "internalType": "uint256[]", "name": "requestIds", "type": "uint256[]" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  
 ] as const;
 
 // smaller ABI for less overhead when parsing submit events

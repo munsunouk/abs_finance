@@ -1,12 +1,12 @@
 import { ethers } from "ethers";
-import { OETHZapperABI } from "@/app/abi/OETHZapper";
+import { OriginProtocolABI } from "@/app/abi/OriginProtocolABI";
 
-interface SuperOETHStakingProps {
+interface SuperOETHProps {
   provider: any;
   smartAccount: any;
   customProvider: any;
   amount: string;
-  setStakeResult: (result: string) => void;
+  setTxHash: (result: string) => void;
 }
 
 export const useSuperOETHStaking = ({
@@ -14,8 +14,8 @@ export const useSuperOETHStaking = ({
   smartAccount,
   customProvider,
   amount,
-  setStakeResult,
-}: SuperOETHStakingProps) => {
+  setTxHash,
+}: SuperOETHProps) => {
   const stakeEth = async (
     amount: string,
     provider: ethers.providers.Web3Provider
@@ -28,7 +28,7 @@ export const useSuperOETHStaking = ({
 
       const erc20 = new ethers.Contract(
         oETHzapperContractAddress,
-        OETHZapperABI,
+        OriginProtocolABI,
         signer
       );
 
@@ -37,13 +37,42 @@ export const useSuperOETHStaking = ({
       });
 
       const receipt = await tx.wait();
-      setStakeResult(
+      setTxHash(
         `Staking successful, transaction hash:: ${receipt.transactionHash}`
       );
 
       return receipt.transactionHash;
     } catch (error) {
       throw new Error(`Staking failed: ${JSON.stringify(error)}`);
+    }
+  };
+
+  const unstake = async (
+    amount: string,
+    provider: ethers.providers.Web3Provider
+  ): Promise<string> => {
+    try {
+      const VaultProxyContractAddress =
+        "0x98a0CbeF61bD2D21435f433bE4CD42B56B38CC93";
+      const signer = provider.getSigner();
+      const amountInWei = ethers.utils.parseEther(amount);
+
+      const erc20 = new ethers.Contract(
+        VaultProxyContractAddress,
+        OriginProtocolABI,
+        signer
+      );
+
+      const tx = await erc20.requestWithdrawal(amountInWei);
+
+      const receipt = await tx.wait();
+      setTxHash(
+        `Withdrawal successful, transaction hash:: ${receipt.transactionHash}`
+      );
+
+      return receipt.transactionHash;
+    } catch (error) {
+      throw new Error(`Withdrawal failed: ${JSON.stringify(error)}`);
     }
   };
 
@@ -54,8 +83,31 @@ export const useSuperOETHStaking = ({
     return parseFloat(balanceInEther);
   };
 
+  const fetchStakedBalance = async (): Promise<number> => {
+    try {
+      const address = await smartAccount.getAddress();
+      const superOETHContractAddress =
+        "0xDBFeFD2e8460a6Ee4955A68582F85708BAEA60A3";
+
+      const superOETHContract = new ethers.Contract(
+        superOETHContractAddress,
+        ["function balanceOf(address account) view returns (uint256)"],
+        customProvider
+      );
+
+      const balanceResponse = await superOETHContract.balanceOf(address);
+      const balanceInEther = ethers.utils.formatEther(balanceResponse);
+      return parseFloat(balanceInEther);
+    } catch (error) {
+      console.error("superOETH 잔액 조회 실패:", error);
+      return 0;
+    }
+  };
+
   return {
     stakeEth,
+    unstake,
     fetchBalance,
+    fetchStakedBalance,
   };
 };

@@ -28,16 +28,6 @@ const Home: NextPage = () => {
       <main className="flex-grow pt-24">
         <StakingPage />
       </main>
-
-      {/* Footer */}
-      <footer className="py-6 text-center text-white/60">
-        <div className="flex justify-center gap-8 mb-4">
-          <button className="hover:text-white">FAQ</button>
-          <button className="hover:text-white">Terms</button>
-          <button className="hover:text-white">Docs</button>
-        </div>
-        <p className="text-sm">Powered by ABS Finance</p>
-      </footer>
     </div>
   );
 };

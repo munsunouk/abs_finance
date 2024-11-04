@@ -1,5 +1,5 @@
 // DO NOT EDIT - GENERATED
-export const OETHZapperABI = [
+export const OriginProtocolABI = [
     {
       inputs: [
         { internalType: 'address', name: '_oeth', type: 'address' },
@@ -86,4 +86,14 @@ export const OETHZapperABI = [
       type: 'function',
     },
     { stateMutability: 'payable', type: 'receive' },
+    {
+      inputs: [{ internalType: 'uint256', name: 'amount', type: 'uint256' }],
+      name: 'requestWithdrawal',
+      outputs: [
+        { internalType: 'uint256', name: 'requestId', type: 'uint256' },
+        { internalType: 'uint256', name: 'queued', type: 'uint256' },
+      ],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
   ] as const;
