@@ -13,14 +13,13 @@ import {
   SendTransactionMode,
   SmartAccount,
 } from "@particle-network/aa";
+import { useLidoStaking } from "@/app/components/staking/LidoStaking";
 import { useSuperOETHStaking } from "@/app/components/staking/SuperOETHStaking";
 import { useListaStaking } from "@/app/components/staking/ListaStaking";
-import { useLidoStaking } from "@/app/components/staking/LidoStaking";
 import { LISTAStaingManagerABI } from "@/app/abi/LISTAStaingManagerABI";
 import Image from "next/image";
-
 const StakingPage: React.FC = () => {
-  const [selectedToken, setSelectedToken] = useState("rETH");
+  const [selectedToken, setSelectedToken] = useState("stETH");
   const [amount, setAmount] = useState("");
   const { provider, address, chainInfo, signTypedData } = useEthereum();
   const { connect, disconnect } = useConnect();
@@ -29,7 +28,7 @@ const StakingPage: React.FC = () => {
   const [withdrawResult, setWithdrawResult] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [apyRates, setApyRates] = useState<{ [key: string]: string }>({
-    rETH: "0%",
+    stETH: "0%",
     superOETH: "0%",
     slisBNB: "0%",
   });
@@ -44,7 +43,7 @@ const StakingPage: React.FC = () => {
   );
   const [exchangeRates, setExchangeRates] = useState<{ [key: string]: number }>(
     {
-      rETH: 1,
+      stETH: 1,
       superOETH: 1,
       slisBNB: 1,
     }
@@ -52,16 +51,13 @@ const StakingPage: React.FC = () => {
   const [activeView, setActiveView] = useState<"stake" | "unstake">("stake");
   const [stakedBalance, setStakedBalance] = useState<string>("0");
   const [outputBalance, setOutputBalance] = useState<string>("0");
-
   useEffect(() => {
     setMounted(true);
   }, []);
-
   const gasLimit = 200000;
-
   const getChainId = useCallback(() => {
     switch (selectedToken) {
-      case "rETH":
+      case "stETH":
         return EthereumHolesky.id;
       case "superOETH":
         return Base.id;
@@ -71,7 +67,6 @@ const StakingPage: React.FC = () => {
         return EthereumHolesky.id;
     }
   }, [selectedToken]);
-
   useEffect(() => {
     if (provider) {
       const newSmartAccount = new SmartAccount(provider, {
@@ -89,22 +84,14 @@ const StakingPage: React.FC = () => {
           },
         },
       });
-
-      // const newCustomProvider = new Web3Provider(
-      //   new AAWrapProvider(newSmartAccount, SendTransactionMode.Gasless),
-      //   "any"
-      // );
-
       const newCustomProvider = new Web3Provider(
-        new AAWrapProvider(newSmartAccount, SendTransactionMode.UserSelect),
+        new AAWrapProvider(newSmartAccount, SendTransactionMode.Gasless),
         "any"
       );
-
       setSmartAccount(newSmartAccount);
       setCustomProvider(newCustomProvider);
     }
   }, [provider, selectedToken, getChainId]);
-
   useEffect(() => {
     const fetchBalance = async () => {
       if (userInfo && provider && smartAccount && customProvider) {
@@ -120,19 +107,19 @@ const StakingPage: React.FC = () => {
     };
     fetchBalance();
   }, [userInfo, selectedToken, smartAccount, customProvider, provider]);
-
-  const fetchRocketPoolAPR = useCallback(async () => {
+  const fetchLidoAPR = useCallback(async () => {
     try {
-      const response = await fetch("https://testnet.rocketpool.net/api/holesky/payload");
+      const response = await fetch(
+        "https://eth-api-holesky.testnet.fi/v1/protocol/steth/apr/sma"
+      );
       const data = await response.json();
-      const aprValue = parseFloat(data.rethAPR)
+      const aprValue = data.data.smaApr;
       return aprValue.toFixed(2) + "%";
     } catch (error) {
-      console.error("Rocket Pool APR 조회 실패:", error);
+      console.error("Lido APR 조회 실패:", error);
       return "0%";
     }
   }, []);
-
   const fetchSuperOETHAPY = useCallback(async () => {
     try {
       const response = await fetch(
@@ -167,7 +154,6 @@ const StakingPage: React.FC = () => {
       return "0%";
     }
   }, []);
-
   const fetchListaAPY = useCallback(async () => {
     try {
       const response = await fetch(
@@ -184,16 +170,15 @@ const StakingPage: React.FC = () => {
       return "0%";
     }
   }, []);
-
   useEffect(() => {
     const fetchSelectedTokenAPR = async () => {
       setIsApyLoading(true);
       try {
         let apr: string;
         switch (selectedToken) {
-          case "rETH":
-            apr = await fetchRocketPoolAPR();
-            setApyRates((prev) => ({ ...prev, rETH: apr }));
+          case "stETH":
+            apr = await fetchLidoAPR();
+            setApyRates((prev) => ({ ...prev, stETH: apr }));
             break;
           case "superOETH":
             apr = await fetchSuperOETHAPY();
@@ -208,33 +193,27 @@ const StakingPage: React.FC = () => {
         setIsApyLoading(false);
       }
     };
-
     fetchSelectedTokenAPR();
-  }, [selectedToken, fetchRocketPoolAPR, fetchSuperOETHAPY, fetchListaAPY]);
-
+  }, [selectedToken, fetchLidoAPR, fetchSuperOETHAPY, fetchListaAPY]);
   const tokenDisplayNames: { [key: string]: string } = {
-    rETH: "ETH",
+    stETH: "ETH",
     superOETH: "ETH",
     slisBNB: "BNB",
   };
-
   const tokens = [
-    { id: "rETH", name: "rETH", apy: apyRates.rETH },
+    { id: "stETH", name: "stETH", apy: apyRates.stETH },
     { id: "superOETH", name: "superOETH", apy: apyRates.superOETH },
     { id: "slisBNB", name: "slisBNB", apy: apyRates.slisBNB },
   ];
-
   const getExplorerUrl = (hash: string) => {
     return `${chainInfo.blockExplorerUrl}/tx/${hash}`;
   };
-
   const handleAmountChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value && !/^\d*\.?\d*$/.test(value)) {
       return;
     }
     setAmount(value);
-
     try {
       if (value) {
         // 가스 비용을 포함한 총 비용 계산
@@ -247,24 +226,19 @@ const StakingPage: React.FC = () => {
       setError(error.message);
     }
   };
-
   const calculateTotalCost = async (amount: string, gasLimit: number) => {
     if (!provider || !userInfo)
       throw new Error("Provider 또는 유저 정보가 없습니다");
-
     const ethersProvider = new ethers.providers.Web3Provider(provider as any);
     const address = await smartAccount?.getAddress();
-
     if (!address) {
       throw new Error("주소 가져올 수 없습니다");
     }
-
     const gasPrice = await ethersProvider.getGasPrice();
     const totalGasCost = gasPrice.mul(gasLimit);
     const value = ethers.utils.parseEther(amount);
     const totalCost = totalGasCost.add(value);
     const balance = await ethersProvider.getBalance(address);
-
     if (balance.lt(totalCost)) {
       throw new Error(
         `잔액이 부족합니다. 필요: ${ethers.utils.formatEther(totalCost)} ${
@@ -274,18 +248,15 @@ const StakingPage: React.FC = () => {
         }`
       );
     }
-
     return totalCost;
   };
-
-  const rocketPoolStaking = useLidoStaking({
+  const lidoStaking = useLidoStaking({
     provider,
     smartAccount,
     customProvider,
     amount,
     setTxHash,
   });
-
   const superOETHStaking = useSuperOETHStaking({
     provider,
     smartAccount,
@@ -293,7 +264,6 @@ const StakingPage: React.FC = () => {
     amount,
     setTxHash,
   });
-
   const listaStaking = useListaStaking({
     provider,
     smartAccount,
@@ -301,7 +271,6 @@ const StakingPage: React.FC = () => {
     amount,
     setTxHash: setTxResult,
   });
-
   const handleStake = async () => {
     try {
       await calculateTotalCost(amount, gasLimit);
@@ -310,19 +279,13 @@ const StakingPage: React.FC = () => {
         await connect({});
         return;
       }
-
       if (!provider || !smartAccount || !customProvider) {
         throw new Error("Provider가 초기화되 않았습니다");
       }
-
       let transactionHash = "";
-
       switch (selectedToken) {
-        case "rETH":
-          transactionHash = await rocketPoolStaking.stake(
-            amount,
-            customProvider
-          );
+        case "stETH":
+          transactionHash = await lidoStaking.stake(amount, customProvider);
           break;
         case "superOETH":
           transactionHash = await superOETHStaking.stake(
@@ -334,7 +297,6 @@ const StakingPage: React.FC = () => {
           transactionHash = await listaStaking.stake(amount, customProvider);
           break;
       }
-
       setTxHash(transactionHash);
     } catch (error) {
       console.error(`스테이킹 실패: ${error}`);
@@ -343,18 +305,14 @@ const StakingPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
   const handleTokenSelect = async (tokenId: string) => {
     setSelectedToken(tokenId);
-
     if (!userInfo || !provider) return;
-
     try {
       setIsLoading(true);
       let targetChain;
-
       switch (tokenId) {
-        case "rETH":
+        case "stETH":
           targetChain = EthereumHolesky;
           break;
         case "superOETH":
@@ -366,13 +324,11 @@ const StakingPage: React.FC = () => {
         default:
           targetChain = EthereumHolesky;
       }
-
       // Particle 지갑 체인 변경
       await provider.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: `0x${targetChain.id.toString(16)}` }],
       });
-
     } catch (error: any) {
       // 체인이 지갑에 없는 경우 추가
       if (error.code === 4902) {
@@ -392,11 +348,10 @@ const StakingPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
   // 체인 설정 가져오기 함수
   const getTargetChainConfig = (tokenId: string) => {
     switch (tokenId) {
-      case "rETH":
+      case "stETH":
         return {
           chainId: `0x${EthereumHolesky.id.toString(16)}`,
           chainName: "Ethereum Holesky",
@@ -433,30 +388,22 @@ const StakingPage: React.FC = () => {
           blockExplorerUrls: [BNBChain.blockExplorerUrl],
         };
       default:
-        return getTargetChainConfig("rETH");
+        return getTargetChainConfig("stETH");
     }
   };
-
   // 개별 토큰 환율 조회 함수
-  const fetchRethRate = useCallback(async () => {
+  const fetchStEthRate = async () => {
     try {
-      if (!provider) return 1;
-
-      const ethersProvider = new ethers.providers.Web3Provider(provider as any);
-      const rETHContract = new ethers.Contract(
-        "0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1",
-        RocketPoolABI,
-        ethersProvider
+      const response = await fetch(
+        "https://eth-api.lido.fi/v1/swap/one-inch?token=ETH"
       );
-
-      const rETHAmount = await rETHContract.getExchangeRate();
-      return parseFloat(ethers.utils.formatEther(rETHAmount));
+      const data = await response.json();
+      return data.rate || 1;
     } catch (error) {
-      console.error("rETH 환율 조회 실패:", error);
+      console.error("stETH 환율 조회 실패:", error);
       return 1;
     }
-  }, [provider]);
-
+  };
   const fetchSuperOEthRate = async () => {
     try {
       const response = await fetch(
@@ -492,18 +439,15 @@ const StakingPage: React.FC = () => {
       return 1;
     }
   };
-
   const fetchSlisBnbRate = useCallback(async () => {
     try {
       if (!provider) return 1;
-
       const ethersProvider = new ethers.providers.Web3Provider(provider as any);
       const listaContract = new ethers.Contract(
         "0x1adB950d8bB3dA4bE104211D5AB038628e477fE6",
         LISTAStaingManagerABI,
         ethersProvider
       );
-
       const onebnb = ethers.utils.parseEther("1");
       const slisBNBAmount = await listaContract.convertBnbToSnBnb(onebnb);
       return parseFloat(ethers.utils.formatEther(slisBNBAmount));
@@ -512,18 +456,16 @@ const StakingPage: React.FC = () => {
       return 1;
     }
   }, [provider]);
-
   // 선택된 토큰에 따라 해당하는 환율만 조회
   useEffect(() => {
     const fetchSelectedTokenRate = async () => {
       let rate: number;
-
       switch (selectedToken) {
-        case "rETH":
-          rate = await fetchRethRate();
+        case "stETH":
+          rate = await fetchStEthRate();
           setExchangeRates((prev) => ({
             ...prev,
-            rETH: Number(rate.toFixed(4)),
+            stETH: Number(rate.toFixed(4)),
           }));
           break;
         case "superOETH":
@@ -542,13 +484,10 @@ const StakingPage: React.FC = () => {
           break;
       }
     };
-
     fetchSelectedTokenRate();
   }, [selectedToken, provider, fetchSlisBnbRate]);
-
   const handleUnstake = async () => {
     if (!userInfo || !provider) return;
-
     try {
       await calculateTotalCost("0", gasLimit);
       setIsLoading(true);
@@ -556,17 +495,14 @@ const StakingPage: React.FC = () => {
         await connect({});
         return;
       }
-
       if (!provider || !smartAccount || !customProvider) {
         throw new Error("Provider가 초기화되 않았습니다");
       }
-
       let transactionHash = "";
-
       // 각 토큰별 스테이킹 컴포넌트 사용
       switch (selectedToken) {
-        case "rETH":
-          transactionHash = await rocketPoolStaking.unstake(
+        case "stETH":
+          transactionHash = await lidoStaking.unstake(
             amount,
             customProvider,
           );
@@ -581,24 +517,21 @@ const StakingPage: React.FC = () => {
           transactionHash = await listaStaking.unstake(amount, customProvider);
           break;
       }
-
       setTxHash(transactionHash);
-
     } catch (error) {
       console.error(`언스테이킹 실패: ${error}`);
     } finally {
       setIsLoading(false);
     }
   };
-
   useEffect(() => {
     const fetchStakedBalance = async () => {
       if (userInfo && provider && smartAccount && customProvider) {
         try {
           let balance = 0;
           switch (selectedToken) {
-            case "rETH":
-              balance = await rocketPoolStaking.fetchStakedBalance();
+            case "stETH":
+              balance = await lidoStaking.fetchStakedBalance();
               break;
             case "superOETH":
               balance = await superOETHStaking.fetchStakedBalance();
@@ -616,7 +549,6 @@ const StakingPage: React.FC = () => {
     };
     fetchStakedBalance();
   }, [userInfo, selectedToken, smartAccount, customProvider, provider]);
-
   useEffect(() => {
     const fetchOutputBalance = async () => {
       if (userInfo && provider && smartAccount && customProvider) {
@@ -625,8 +557,8 @@ const StakingPage: React.FC = () => {
           if (activeView === "stake") {
             // 스테이킹 시에는 스테이킹된 토큰 잔액을 보여줌
             switch (selectedToken) {
-              case "rETH":
-                balance = await rocketPoolStaking.fetchStakedBalance();
+              case "stETH":
+                balance = await lidoStaking.fetchStakedBalance();
                 break;
               case "superOETH":
                 balance = await superOETHStaking.fetchStakedBalance();
@@ -657,21 +589,18 @@ const StakingPage: React.FC = () => {
     customProvider,
     provider,
   ]);
-
   const getInputToken = (activeView: string, selectedToken: string) => {
     if (activeView === "stake") {
       return tokenDisplayNames[selectedToken];
     }
     return selectedToken;
   };
-
   const getOutputToken = (activeView: string, selectedToken: string) => {
     if (activeView === "stake") {
       return selectedToken;
     }
     return tokenDisplayNames[selectedToken];
   };
-
   return (
     <div className="container mx-auto p-4 sm:p-8 max-w-4xl">
       <div className="bg-white/5 rounded-3xl p-6 sm:p-8">
@@ -688,7 +617,6 @@ const StakingPage: React.FC = () => {
             </button>
           )}
         </div>
-
         <div className="flex flex-col sm:flex-row gap-2 mb-8">
           {tokens.map((token) => (
             <button
@@ -713,7 +641,6 @@ const StakingPage: React.FC = () => {
             </button>
           ))}
         </div>
-
         <div className="space-y-6">
           <div className="flex bg-white/5 p-1 rounded-xl">
             <button
@@ -733,7 +660,6 @@ const StakingPage: React.FC = () => {
               Unstake
             </button>
           </div>
-
           <div>
             <h2 className="text-xl font-semibold mb-2">
               {selectedToken} {activeView === "stake" ? "Staking" : "Unstaking"}
@@ -747,7 +673,6 @@ const StakingPage: React.FC = () => {
               )}
             </p>
           </div>
-
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">
               {activeView === "stake" ? "Stake" : "Unstake"}
@@ -798,7 +723,6 @@ const StakingPage: React.FC = () => {
               </div>
             </div>
           </div>
-
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Receive</h2>
             <div className="bg-white/5 rounded-xl p-4">
@@ -830,7 +754,6 @@ const StakingPage: React.FC = () => {
               </div>
             </div>
           </div>
-
           <div className="flex justify-between text-gray-400 text-sm mb-8">
             <span>환율</span>
             <span>
@@ -839,7 +762,6 @@ const StakingPage: React.FC = () => {
               {getOutputToken(activeView, selectedToken)}
             </span>
           </div>
-
           <button
             onClick={activeView === "stake" ? handleStake : handleUnstake}
             disabled={isLoading || !amount || !userInfo || !!error}
@@ -860,7 +782,6 @@ const StakingPage: React.FC = () => {
           </button>
         </div>
       </div>
-
       {txHash && (
         <div className="mt-4 p-4 bg-white/5 rounded-xl">
           <p className="text-white/60">트랜잭션 완료:</p>
@@ -877,5 +798,4 @@ const StakingPage: React.FC = () => {
     </div>
   );
 };
-
 export default StakingPage;
