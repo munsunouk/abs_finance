@@ -13,11 +13,10 @@ import {
   SendTransactionMode,
   SmartAccount,
 } from "@particle-network/aa";
-import { useRocketPoolStaking } from "@/app/components/staking/RocketPoolStaking";
 import { useSuperOETHStaking } from "@/app/components/staking/SuperOETHStaking";
 import { useListaStaking } from "@/app/components/staking/ListaStaking";
+import { useLidoStaking } from "@/app/components/staking/LidoStaking";
 import { LISTAStaingManagerABI } from "@/app/abi/LISTAStaingManagerABI";
-import { RocketPoolABI } from "@/app/abi/RocketPoolABI";
 import Image from "next/image";
 
 const StakingPage: React.FC = () => {
@@ -279,7 +278,7 @@ const StakingPage: React.FC = () => {
     return totalCost;
   };
 
-  const rocketPoolStaking = useRocketPoolStaking({
+  const rocketPoolStaking = useLidoStaking({
     provider,
     smartAccount,
     customProvider,

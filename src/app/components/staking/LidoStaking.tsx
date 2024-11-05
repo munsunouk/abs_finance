@@ -1,8 +1,9 @@
 import { ethers } from "ethers";
-import { RocketPoolABI } from "@/app/abi/RocketPoolABI";
+import { StethAbi } from "@/app/abi/LidoContractABI";
 import { EthereumHolesky } from "@particle-network/chains";
+import { LidoSDK } from "@lidofinance/lido-ethereum-sdk";
 
-interface RocketPoolStakingProps {
+interface LidoStakingProps {
   provider: any;
   smartAccount: any;
   customProvider: any;
@@ -10,53 +11,43 @@ interface RocketPoolStakingProps {
   setTxHash: (result: string) => void;
 }
 
-export const useRocketPoolStaking = ({
+export const useLidoStaking = ({
   provider,
   smartAccount,
   customProvider,
   amount,
   setTxHash,
-}: RocketPoolStakingProps) => {
-  const stake = async (
+}: LidoStakingProps) => {
+
+  const stakeEth = async (
     amount: string,
     provider: ethers.providers.Web3Provider
   ): Promise<string> => {
     try {
-      const rocketPoolDepositContractAddressHolesky =
+      const oETHzapperContractAddress =
         "0x7F09ceb3874F5E35Cd2135F56fd4329b88c5d119";
       const signer = provider.getSigner();
       const amountInWei = ethers.utils.parseEther(amount);
       const address = await signer.getAddress();
 
       const erc20 = new ethers.Contract(
-        rocketPoolDepositContractAddressHolesky,
-        RocketPoolABI,
+        oETHzapperContractAddress,
+        StethAbi,
         signer
       );
 
-      setTxHash(
-        `Staking begin...`
-      );
-
-      const tx = await erc20.deposit(address,'',{
+      const tx = await erc20.deposit(address, {
         value: amountInWei,
       });
 
-
       const receipt = await tx.wait();
-
       setTxHash(
         `Staking successful, transaction hash:: ${receipt.transactionHash}`
       );
 
       return receipt.transactionHash;
     } catch (error) {
-
-      setTxHash(
-        `Staking failed: ${JSON.stringify(error)}`
-      );
-
-      throw new Error(`Staking failed: ${JSON.stringify(error)}`);
+      throw new Error(`Staking failed: ${error}`);
     }
   };
 
@@ -66,28 +57,33 @@ export const useRocketPoolStaking = ({
   ): Promise<string> => {
 
     try {
-      const rETHContractAddressHolesky =
+      const lidoContractAddressHolesky =
         "0x3F6F1C1081744c18Bd67DD518F363B9d4c76E1d2";
       const signer = provider.getSigner();
+      const amountInWei = ethers.utils.parseEther(amount);
       const address = await signer.getAddress();
 
-      const amountInWei = ethers.utils.parseEther(amount);
-
       const erc20 = new ethers.Contract(
-        rETHContractAddressHolesky,
-        RocketPoolABI,
+        lidoContractAddressHolesky,
+        StethAbi,
         signer
       );
 
-      // const tx = await erc20.approve(address, amountInWei);
-      //   const receipt = await tx.wait();
+      // const tokenContractAddress = "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859";
 
-      // const allowance = await erc20.allowance(address);
+      // const tokenContract = new ethers.Contract(
+      //   tokenContractAddress,
+      //   StethAbi,
+      //   signer
+      // );
 
-      // if (allowance.lt(amountInWei)) {
-      //   const tx = await erc20.approve(address, amountInWei);
-      //   const receipt = await tx.wait();
-      // }
+      // const tx = await tokenContract.approve(lidoContractAddressHolesky, amountInWei);
+      // const receipt = await tx.wait();
+
+      // const allowance = await tokenContract.allowance(address, tokenContract);
+      // setTxHash(`allowance: ${allowance}`);
+
+      // await new Promise(resolve => setTimeout(resolve, 1000));
 
       const tx = await erc20.requestWithdraw(amountInWei, address);
       const receipt = await tx.wait();
@@ -97,13 +93,10 @@ export const useRocketPoolStaking = ({
       );
 
       return receipt.transactionHash;
+      
     } catch (error) {
-
-      setTxHash(
-        `Unstaking failed: ${JSON.stringify(error)}`
-      );
-
-      throw new Error(`Unstaking failed: ${JSON.stringify(error)}`);
+      setTxHash(`Staking failed: ${JSON.stringify(error)}`);
+      throw new Error(`Staking failed: ${JSON.stringify(error)}`);
     }
   };
 
@@ -118,25 +111,25 @@ export const useRocketPoolStaking = ({
   const fetchStakedBalance = async (): Promise<number> => {
     try {
       const address = await smartAccount.getAddress();
-      const rETHContractAddress = "0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1";
+      const stETHContractAddress = "0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034";
 
-      const rETHContract = new ethers.Contract(
-        rETHContractAddress,
+      const stETHContract = new ethers.Contract(
+        stETHContractAddress,
         ["function balanceOf(address account) view returns (uint256)"],
         customProvider
       );
 
-      const balanceResponse = await rETHContract.balanceOf(address);
+      const balanceResponse = await stETHContract.balanceOf(address);
       const balanceInEther = ethers.utils.formatEther(balanceResponse);
       return parseFloat(balanceInEther);
     } catch (error) {
-      console.error("rETH 잔액 조회 실패:", error);
+      console.error("stETH 잔액 조회 실패:", error);
       return 0;
     }
   };
 
   return {
-    stake,
+    stakeEth,
     unstake,
     fetchBalance,
     fetchStakedBalance,
