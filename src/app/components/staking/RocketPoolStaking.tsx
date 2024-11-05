@@ -1,7 +1,8 @@
 import { ethers } from "ethers";
-import { OriginProtocolABI } from "@/app/abi/OriginProtocolABI";
+import { RocketPoolABI } from "@/app/abi/RocketPoolABI";
+import { EthereumHolesky } from "@particle-network/chains";
 
-interface SuperOETHProps {
+interface RocketPoolStakingProps {
   provider: any;
   smartAccount: any;
   customProvider: any;
@@ -9,75 +10,106 @@ interface SuperOETHProps {
   setTxHash: (result: string) => void;
 }
 
-export const useSuperOETHStaking = ({
+export const useRocketPoolStaking = ({
   provider,
   smartAccount,
   customProvider,
   amount,
   setTxHash,
-}: SuperOETHProps) => {
+}: RocketPoolStakingProps) => {
   const stake = async (
     amount: string,
     provider: ethers.providers.Web3Provider
   ): Promise<string> => {
     try {
-      const oETHzapperContractAddress =
-        "0x3b56c09543D3068f8488ED34e6F383c3854d2bC1";
+      const rocketPoolDepositContractAddressHolesky =
+        "0x7F09ceb3874F5E35Cd2135F56fd4329b88c5d119";
       const signer = provider.getSigner();
       const amountInWei = ethers.utils.parseEther(amount);
+      const address = await signer.getAddress();
 
       const erc20 = new ethers.Contract(
-        oETHzapperContractAddress,
-        OriginProtocolABI,
+        rocketPoolDepositContractAddressHolesky,
+        RocketPoolABI,
         signer
       );
 
-      const tx = await erc20.deposit({
+      setTxHash(
+        `Staking begin...`
+      );
+
+      const tx = await erc20.deposit(address,'',{
         value: amountInWei,
       });
 
+
       const receipt = await tx.wait();
+
       setTxHash(
         `Staking successful, transaction hash:: ${receipt.transactionHash}`
       );
 
       return receipt.transactionHash;
     } catch (error) {
+
+      setTxHash(
+        `Staking failed: ${JSON.stringify(error)}`
+      );
+
       throw new Error(`Staking failed: ${JSON.stringify(error)}`);
     }
   };
 
   const unstake = async (
     amount: string,
-    provider: ethers.providers.Web3Provider
+    provider: ethers.providers.Web3Provider,
   ): Promise<string> => {
+
     try {
-      const VaultProxyContractAddress =
-        "0x98a0CbeF61bD2D21435f433bE4CD42B56B38CC93";
+      const rETHContractAddressHolesky =
+        "0x3F6F1C1081744c18Bd67DD518F363B9d4c76E1d2";
       const signer = provider.getSigner();
+      const address = await signer.getAddress();
+
       const amountInWei = ethers.utils.parseEther(amount);
 
       const erc20 = new ethers.Contract(
-        VaultProxyContractAddress,
-        OriginProtocolABI,
+        rETHContractAddressHolesky,
+        RocketPoolABI,
         signer
       );
 
-      const tx = await erc20.requestWithdrawal(amountInWei);
+      // const tx = await erc20.approve(address, amountInWei);
+      //   const receipt = await tx.wait();
 
+      // const allowance = await erc20.allowance(address);
+
+      // if (allowance.lt(amountInWei)) {
+      //   const tx = await erc20.approve(address, amountInWei);
+      //   const receipt = await tx.wait();
+      // }
+
+      const tx = await erc20.requestWithdraw(amountInWei, address);
       const receipt = await tx.wait();
+
       setTxHash(
-        `Withdrawal successful, transaction hash:: ${receipt.transactionHash}`
+        `Staking successful, transaction hash:: ${receipt.transactionHash}`
       );
 
       return receipt.transactionHash;
     } catch (error) {
-      throw new Error(`Withdrawal failed: ${JSON.stringify(error)}`);
+
+      setTxHash(
+        `Unstaking failed: ${JSON.stringify(error)}`
+      );
+
+      throw new Error(`Unstaking failed: ${JSON.stringify(error)}`);
     }
   };
 
   const fetchBalance = async (): Promise<number> => {
     const address = await smartAccount.getAddress();
+
     const balanceResponse = await customProvider.getBalance(address);
     const balanceInEther = ethers.utils.formatEther(balanceResponse);
     return parseFloat(balanceInEther);
@@ -86,20 +118,19 @@ export const useSuperOETHStaking = ({
   const fetchStakedBalance = async (): Promise<number> => {
     try {
       const address = await smartAccount.getAddress();
-      const superOETHContractAddress =
-        "0xDBFeFD2e8460a6Ee4955A68582F85708BAEA60A3";
+      const rETHContractAddress = "0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1";
 
-      const superOETHContract = new ethers.Contract(
-        superOETHContractAddress,
+      const rETHContract = new ethers.Contract(
+        rETHContractAddress,
         ["function balanceOf(address account) view returns (uint256)"],
         customProvider
       );
 
-      const balanceResponse = await superOETHContract.balanceOf(address);
+      const balanceResponse = await rETHContract.balanceOf(address);
       const balanceInEther = ethers.utils.formatEther(balanceResponse);
       return parseFloat(balanceInEther);
     } catch (error) {
-      console.error("superOETH 잔액 조회 실패:", error);
+      console.error("rETH 잔액 조회 실패:", error);
       return 0;
     }
   };
