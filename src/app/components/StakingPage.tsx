@@ -332,7 +332,7 @@ const StakingPage: React.FC = () => {
       setTxHash(transactionHash);
     } catch (error) {
       console.error(`스테이킹 실패: ${error}`);
-      setTxHash(null);
+      setTxHash(`스테이킹 실패: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -557,7 +557,6 @@ const StakingPage: React.FC = () => {
           transactionHash = await lidoStaking.unstake(
             amount,
             customProvider,
-            signTypedData
           );
           break;
         case "superOETH":

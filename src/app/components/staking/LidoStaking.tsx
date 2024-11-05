@@ -18,35 +18,36 @@ export const useLidoStaking = ({
   amount,
   setTxHash,
 }: LidoStakingProps) => {
+
   const stakeEth = async (
     amount: string,
     provider: ethers.providers.Web3Provider
   ): Promise<string> => {
     try {
-      const lidoContractAddressHolesky =
-        "0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034";
+      const oETHzapperContractAddress =
+        "0x7F09ceb3874F5E35Cd2135F56fd4329b88c5d119";
       const signer = provider.getSigner();
       const amountInWei = ethers.utils.parseEther(amount);
       const address = await signer.getAddress();
 
       const erc20 = new ethers.Contract(
-        lidoContractAddressHolesky,
+        oETHzapperContractAddress,
         StethAbi,
         signer
       );
 
-      const tx = await erc20.deposit(address, "",{
+      const tx = await erc20.deposit(address, {
         value: amountInWei,
       });
-      const receipt = await tx.wait();
 
+      const receipt = await tx.wait();
       setTxHash(
         `Staking successful, transaction hash:: ${receipt.transactionHash}`
       );
 
       return receipt.transactionHash;
     } catch (error) {
-      throw new Error(`Staking failed: ${JSON.stringify(error)}`);
+      throw new Error(`Staking failed: ${error}`);
     }
   };
 
@@ -57,7 +58,7 @@ export const useLidoStaking = ({
 
     try {
       const lidoContractAddressHolesky =
-        "0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034";
+        "0x3F6F1C1081744c18Bd67DD518F363B9d4c76E1d2";
       const signer = provider.getSigner();
       const amountInWei = ethers.utils.parseEther(amount);
       const address = await signer.getAddress();
@@ -68,6 +69,22 @@ export const useLidoStaking = ({
         signer
       );
 
+      // const tokenContractAddress = "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859";
+
+      // const tokenContract = new ethers.Contract(
+      //   tokenContractAddress,
+      //   StethAbi,
+      //   signer
+      // );
+
+      // const tx = await tokenContract.approve(lidoContractAddressHolesky, amountInWei);
+      // const receipt = await tx.wait();
+
+      // const allowance = await tokenContract.allowance(address, tokenContract);
+      // setTxHash(`allowance: ${allowance}`);
+
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+
       const tx = await erc20.requestWithdraw(amountInWei, address);
       const receipt = await tx.wait();
 
@@ -76,7 +93,9 @@ export const useLidoStaking = ({
       );
 
       return receipt.transactionHash;
+      
     } catch (error) {
+      setTxHash(`Staking failed: ${JSON.stringify(error)}`);
       throw new Error(`Staking failed: ${JSON.stringify(error)}`);
     }
   };
