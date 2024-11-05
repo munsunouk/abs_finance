@@ -99,7 +99,6 @@ export const useSuperOETHStaking = ({
       const balanceInEther = ethers.utils.formatEther(balanceResponse);
       return parseFloat(balanceInEther);
     } catch (error) {
-      console.error("superOETH 잔액 조회 실패:", error);
       return 0;
     }
   };

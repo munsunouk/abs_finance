@@ -13,13 +13,13 @@ import {
   SendTransactionMode,
   SmartAccount,
 } from "@particle-network/aa";
-import { useLidoStaking } from "@/app/components/staking/LidoStaking";
+import { useStaderStaking } from "@/app/components/staking/StaderStaking";
 import { useSuperOETHStaking } from "@/app/components/staking/SuperOETHStaking";
 import { useListaStaking } from "@/app/components/staking/ListaStaking";
 import { LISTAStaingManagerABI } from "@/app/abi/LISTAStaingManagerABI";
 import Image from "next/image";
 const StakingPage: React.FC = () => {
-  const [selectedToken, setSelectedToken] = useState("stETH");
+  const [selectedToken, setSelectedToken] = useState("ETHx");
   const [amount, setAmount] = useState("");
   const { provider, address, chainInfo, signTypedData } = useEthereum();
   const { connect, disconnect } = useConnect();
@@ -28,7 +28,7 @@ const StakingPage: React.FC = () => {
   const [withdrawResult, setWithdrawResult] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [apyRates, setApyRates] = useState<{ [key: string]: string }>({
-    stETH: "0%",
+    ETHx: "0%",
     superOETH: "0%",
     slisBNB: "0%",
   });
@@ -43,7 +43,7 @@ const StakingPage: React.FC = () => {
   );
   const [exchangeRates, setExchangeRates] = useState<{ [key: string]: number }>(
     {
-      stETH: 1,
+      ETHx: 1,
       superOETH: 1,
       slisBNB: 1,
     }
@@ -51,13 +51,14 @@ const StakingPage: React.FC = () => {
   const [activeView, setActiveView] = useState<"stake" | "unstake">("stake");
   const [stakedBalance, setStakedBalance] = useState<string>("0");
   const [outputBalance, setOutputBalance] = useState<string>("0");
+  const [needsApproval, setNeedsApproval] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
   const gasLimit = 200000;
   const getChainId = useCallback(() => {
     switch (selectedToken) {
-      case "stETH":
+      case "ETHx":
         return EthereumHolesky.id;
       case "superOETH":
         return Base.id;
@@ -100,26 +101,25 @@ const StakingPage: React.FC = () => {
           const balanceResponse = await customProvider.getBalance(address);
           setBalance(ethers.utils.formatEther(balanceResponse));
         } catch (error) {
-          console.error("잔액 조회 실패:", error);
           setBalance("0");
         }
       }
     };
     fetchBalance();
   }, [userInfo, selectedToken, smartAccount, customProvider, provider]);
-  const fetchLidoAPR = useCallback(async () => {
+  const fetchStaderAPR = useCallback(async () => {
     try {
-      const response = await fetch(
-        "https://eth-api-holesky.testnet.fi/v1/protocol/steth/apr/sma"
-      );
+      const response = await fetch("https://universe.staderlabs.com/eth/apy");
       const data = await response.json();
-      const aprValue = data.data.smaApr;
-      return aprValue.toFixed(2) + "%";
+
+      return data.value + "%";
     } catch (error) {
-      console.error("Lido APR 조회 실패:", error);
+      console.error("Failed to fetch Stader APR:", error);
+
       return "0%";
     }
   }, []);
+
   const fetchSuperOETHAPY = useCallback(async () => {
     try {
       const response = await fetch(
@@ -150,7 +150,6 @@ const StakingPage: React.FC = () => {
       const apyData = data.data.oTokenApies[0];
       return (apyData.apy7DayAvg * 100).toFixed(2) + "%";
     } catch (error) {
-      console.error("SuperOETH APY 조회 실패:", error);
       return "0%";
     }
   }, []);
@@ -166,7 +165,6 @@ const StakingPage: React.FC = () => {
       }
       return "0%";
     } catch (error) {
-      console.error("Lista APY 조회 실패:", error);
       return "0%";
     }
   }, []);
@@ -176,9 +174,9 @@ const StakingPage: React.FC = () => {
       try {
         let apr: string;
         switch (selectedToken) {
-          case "stETH":
-            apr = await fetchLidoAPR();
-            setApyRates((prev) => ({ ...prev, stETH: apr }));
+          case "ETHx":
+            apr = await fetchStaderAPR();
+            setApyRates((prev) => ({ ...prev, ETHx: apr }));
             break;
           case "superOETH":
             apr = await fetchSuperOETHAPY();
@@ -194,14 +192,14 @@ const StakingPage: React.FC = () => {
       }
     };
     fetchSelectedTokenAPR();
-  }, [selectedToken, fetchLidoAPR, fetchSuperOETHAPY, fetchListaAPY]);
+  }, [selectedToken, fetchStaderAPR, fetchSuperOETHAPY, fetchListaAPY]);
   const tokenDisplayNames: { [key: string]: string } = {
-    stETH: "ETH",
+    ETHx: "ETH",
     superOETH: "ETH",
     slisBNB: "BNB",
   };
   const tokens = [
-    { id: "stETH", name: "stETH", apy: apyRates.stETH },
+    { id: "ETHx", name: "ETHx", apy: apyRates.ETHx },
     { id: "superOETH", name: "superOETH", apy: apyRates.superOETH },
     { id: "slisBNB", name: "slisBNB", apy: apyRates.slisBNB },
   ];
@@ -216,7 +214,6 @@ const StakingPage: React.FC = () => {
     setAmount(value);
     try {
       if (value) {
-        // 가스 비용을 포함한 총 비용 계산
         await calculateTotalCost(value, gasLimit);
         setError(null);
       } else {
@@ -228,11 +225,11 @@ const StakingPage: React.FC = () => {
   };
   const calculateTotalCost = async (amount: string, gasLimit: number) => {
     if (!provider || !userInfo)
-      throw new Error("Provider 또는 유저 정보가 없습니다");
+      throw new Error("Provider or user info is not available");
     const ethersProvider = new ethers.providers.Web3Provider(provider as any);
     const address = await smartAccount?.getAddress();
     if (!address) {
-      throw new Error("주소 가져올 수 없습니다");
+      throw new Error("Failed to get address");
     }
     const gasPrice = await ethersProvider.getGasPrice();
     const totalGasCost = gasPrice.mul(gasLimit);
@@ -241,21 +238,24 @@ const StakingPage: React.FC = () => {
     const balance = await ethersProvider.getBalance(address);
     if (balance.lt(totalCost)) {
       throw new Error(
-        `잔액이 부족합니다. 필요: ${ethers.utils.formatEther(totalCost)} ${
+        `Insufficient balance. Required: ${ethers.utils.formatEther(
+          totalCost
+        )} ${
           chainInfo.nativeCurrency.symbol
-        }, 보유: ${ethers.utils.formatEther(balance)} ${
+        }, Available: ${ethers.utils.formatEther(balance)} ${
           chainInfo.nativeCurrency.symbol
         }`
       );
     }
     return totalCost;
   };
-  const lidoStaking = useLidoStaking({
+  const staderStaking = useStaderStaking({
     provider,
     smartAccount,
     customProvider,
     amount,
     setTxHash,
+    setNeedsApproval,
   });
   const superOETHStaking = useSuperOETHStaking({
     provider,
@@ -280,12 +280,12 @@ const StakingPage: React.FC = () => {
         return;
       }
       if (!provider || !smartAccount || !customProvider) {
-        throw new Error("Provider가 초기화되 않았습니다");
+        throw new Error("Provider is not initialized");
       }
       let transactionHash = "";
       switch (selectedToken) {
-        case "stETH":
-          transactionHash = await lidoStaking.stake(amount, customProvider);
+        case "ETHx":
+          transactionHash = await staderStaking.stake(amount, customProvider);
           break;
         case "superOETH":
           transactionHash = await superOETHStaking.stake(
@@ -299,8 +299,7 @@ const StakingPage: React.FC = () => {
       }
       setTxHash(transactionHash);
     } catch (error) {
-      console.error(`스테이킹 실패: ${error}`);
-      setTxHash(`스테이킹 실패: ${error}`);
+      throw new Error(`Staking failed: ${JSON.stringify(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -312,7 +311,7 @@ const StakingPage: React.FC = () => {
       setIsLoading(true);
       let targetChain;
       switch (tokenId) {
-        case "stETH":
+        case "ETHx":
           targetChain = EthereumHolesky;
           break;
         case "superOETH":
@@ -324,13 +323,12 @@ const StakingPage: React.FC = () => {
         default:
           targetChain = EthereumHolesky;
       }
-      // Particle 지갑 체인 변경
+
       await provider.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: `0x${targetChain.id.toString(16)}` }],
       });
     } catch (error: any) {
-      // 체인이 지갑에 없는 경우 추가
       if (error.code === 4902) {
         try {
           const targetChain = getTargetChainConfig(tokenId);
@@ -338,11 +336,8 @@ const StakingPage: React.FC = () => {
             method: "wallet_addEthereumChain",
             params: [targetChain],
           });
-        } catch (addError) {
-          console.error("체인 추가 실패:", addError);
-        }
+        } catch (addError) {}
       } else {
-        console.error("체인 전환 실패:", error);
       }
     } finally {
       setIsLoading(false);
@@ -351,7 +346,7 @@ const StakingPage: React.FC = () => {
   // 체인 설정 가져오기 함수
   const getTargetChainConfig = (tokenId: string) => {
     switch (tokenId) {
-      case "stETH":
+      case "ETHx":
         return {
           chainId: `0x${EthereumHolesky.id.toString(16)}`,
           chainName: "Ethereum Holesky",
@@ -388,19 +383,19 @@ const StakingPage: React.FC = () => {
           blockExplorerUrls: [BNBChain.blockExplorerUrl],
         };
       default:
-        return getTargetChainConfig("stETH");
+        return getTargetChainConfig("ETHx");
     }
   };
-  // 개별 토큰 환율 조회 함수
-  const fetchStEthRate = async () => {
+
+  const fetchEthxRate = async () => {
     try {
       const response = await fetch(
-        "https://eth-api.lido.fi/v1/swap/one-inch?token=ETH"
+        "https://universe.staderlabs.com/eth/exchangeRate"
       );
       const data = await response.json();
-      return data.rate || 1;
+
+      return data.value || 1;
     } catch (error) {
-      console.error("stETH 환율 조회 실패:", error);
       return 1;
     }
   };
@@ -432,10 +427,9 @@ const StakingPage: React.FC = () => {
       );
       const data = await response.json();
       const rateETHWei =
-        data.data.oTokenDailyStats[0]?.rateETH || "999919896260820761";
+        data.data.oTokenDailyStats[0]?.rateETH || "1000000000000000000";
       return parseFloat(ethers.utils.formatUnits(rateETHWei, 18));
     } catch (error) {
-      console.error("superOETH 환율 조회 실패:", error);
       return 1;
     }
   };
@@ -452,7 +446,6 @@ const StakingPage: React.FC = () => {
       const slisBNBAmount = await listaContract.convertBnbToSnBnb(onebnb);
       return parseFloat(ethers.utils.formatEther(slisBNBAmount));
     } catch (error) {
-      console.error("slisBNB 환율 조회 실패:", error);
       return 1;
     }
   }, [provider]);
@@ -461,11 +454,11 @@ const StakingPage: React.FC = () => {
     const fetchSelectedTokenRate = async () => {
       let rate: number;
       switch (selectedToken) {
-        case "stETH":
-          rate = await fetchStEthRate();
+        case "ETHx":
+          rate = await fetchEthxRate();
           setExchangeRates((prev) => ({
             ...prev,
-            stETH: Number(rate.toFixed(4)),
+            ETHx: Number(rate.toFixed(4)),
           }));
           break;
         case "superOETH":
@@ -501,11 +494,8 @@ const StakingPage: React.FC = () => {
       let transactionHash = "";
       // 각 토큰별 스테이킹 컴포넌트 사용
       switch (selectedToken) {
-        case "stETH":
-          transactionHash = await lidoStaking.unstake(
-            amount,
-            customProvider,
-          );
+        case "ETHx":
+          transactionHash = await staderStaking.unstake(amount, customProvider);
           break;
         case "superOETH":
           transactionHash = await superOETHStaking.unstake(
@@ -519,7 +509,7 @@ const StakingPage: React.FC = () => {
       }
       setTxHash(transactionHash);
     } catch (error) {
-      console.error(`언스테이킹 실패: ${error}`);
+      throw new Error(`Unstaking failed: ${JSON.stringify(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -530,8 +520,8 @@ const StakingPage: React.FC = () => {
         try {
           let balance = 0;
           switch (selectedToken) {
-            case "stETH":
-              balance = await lidoStaking.fetchStakedBalance();
+            case "ETHx":
+              balance = await staderStaking.fetchStakedBalance();
               break;
             case "superOETH":
               balance = await superOETHStaking.fetchStakedBalance();
@@ -542,7 +532,6 @@ const StakingPage: React.FC = () => {
           }
           setStakedBalance(balance.toString());
         } catch (error) {
-          console.error("스테이킹된 잔액 조회 실패:", error);
           setStakedBalance("0");
         }
       }
@@ -557,8 +546,8 @@ const StakingPage: React.FC = () => {
           if (activeView === "stake") {
             // 스테이킹 시에는 스테이킹된 토큰 잔액을 보여줌
             switch (selectedToken) {
-              case "stETH":
-                balance = await lidoStaking.fetchStakedBalance();
+              case "ETHx":
+                balance = await staderStaking.fetchStakedBalance();
                 break;
               case "superOETH":
                 balance = await superOETHStaking.fetchStakedBalance();
@@ -575,7 +564,6 @@ const StakingPage: React.FC = () => {
           }
           setOutputBalance(balance.toString());
         } catch (error) {
-          console.error("출력 토큰 잔액 조회 실패:", error);
           setOutputBalance("0");
         }
       }
@@ -667,7 +655,7 @@ const StakingPage: React.FC = () => {
             <p className="text-white/60">
               APR:{" "}
               {isApyLoading ? (
-                <span className="inline-block animate-pulse">로딩 중...</span>
+                <span className="inline-block animate-pulse">Loading...</span>
               ) : (
                 apyRates[selectedToken]
               )}
@@ -755,7 +743,7 @@ const StakingPage: React.FC = () => {
             </div>
           </div>
           <div className="flex justify-between text-gray-400 text-sm mb-8">
-            <span>환율</span>
+            <span>Exchange Rate</span>
             <span>
               1 {getInputToken(activeView, selectedToken)} ={" "}
               {exchangeRates[selectedToken]}{" "}
@@ -774,10 +762,19 @@ const StakingPage: React.FC = () => {
             {isLoading ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                {activeView === "stake" ? "스테이킹 중..." : "언스테이킹 중..."}
+                {activeView === "stake"
+                  ? "Staking..."
+                  : needsApproval
+                  ? "Approving..."
+                  : "Unstaking..."}
               </div>
             ) : (
-              error || (activeView === "stake" ? "Stake" : "Unstake")
+              error ||
+              (activeView === "stake"
+                ? "Stake"
+                : needsApproval
+                ? "Approve"
+                : "Unstake")
             )}
           </button>
         </div>

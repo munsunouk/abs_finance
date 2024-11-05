@@ -63,8 +63,6 @@ export const useListaStaking = ({
         signer
       );
 
-      setTxHash(`Unstaking ${amount} slisBNB`);
-
       const tx = await bnbStakingContract.requestWithdraw(amountInWei);
 
       const receipt = await tx.wait();
@@ -101,7 +99,6 @@ export const useListaStaking = ({
       const balanceInEther = ethers.utils.formatEther(balanceResponse);
       return parseFloat(balanceInEther);
     } catch (error) {
-      console.error("slisBNB 잔액 조회 실패:", error);
       return 0;
     }
   };

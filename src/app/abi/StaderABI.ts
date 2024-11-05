@@ -1,4 +1,4 @@
-export const StethAbi = [
+export const StaderABI = [
   {
     inputs: [
       {
