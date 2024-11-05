@@ -13,14 +13,15 @@ import {
   SendTransactionMode,
   SmartAccount,
 } from "@particle-network/aa";
-import { useLidoStaking } from "@/app/components/staking/LidoStaking";
+import { useRocketPoolStaking } from "@/app/components/staking/RocketPoolStaking";
 import { useSuperOETHStaking } from "@/app/components/staking/SuperOETHStaking";
 import { useListaStaking } from "@/app/components/staking/ListaStaking";
 import { LISTAStaingManagerABI } from "@/app/abi/LISTAStaingManagerABI";
+import { RocketPoolABI } from "@/app/abi/RocketPoolABI";
 import Image from "next/image";
 
 const StakingPage: React.FC = () => {
-  const [selectedToken, setSelectedToken] = useState("stETH");
+  const [selectedToken, setSelectedToken] = useState("rETH");
   const [amount, setAmount] = useState("");
   const { provider, address, chainInfo, signTypedData } = useEthereum();
   const { connect, disconnect } = useConnect();
@@ -29,7 +30,7 @@ const StakingPage: React.FC = () => {
   const [withdrawResult, setWithdrawResult] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [apyRates, setApyRates] = useState<{ [key: string]: string }>({
-    stETH: "0%",
+    rETH: "0%",
     superOETH: "0%",
     slisBNB: "0%",
   });
@@ -44,7 +45,7 @@ const StakingPage: React.FC = () => {
   );
   const [exchangeRates, setExchangeRates] = useState<{ [key: string]: number }>(
     {
-      stETH: 1,
+      rETH: 1,
       superOETH: 1,
       slisBNB: 1,
     }
@@ -61,7 +62,7 @@ const StakingPage: React.FC = () => {
 
   const getChainId = useCallback(() => {
     switch (selectedToken) {
-      case "stETH":
+      case "rETH":
         return EthereumHolesky.id;
       case "superOETH":
         return Base.id;
@@ -90,8 +91,13 @@ const StakingPage: React.FC = () => {
         },
       });
 
+      // const newCustomProvider = new Web3Provider(
+      //   new AAWrapProvider(newSmartAccount, SendTransactionMode.Gasless),
+      //   "any"
+      // );
+
       const newCustomProvider = new Web3Provider(
-        new AAWrapProvider(newSmartAccount, SendTransactionMode.Gasless),
+        new AAWrapProvider(newSmartAccount, SendTransactionMode.UserSelect),
         "any"
       );
 
@@ -116,16 +122,14 @@ const StakingPage: React.FC = () => {
     fetchBalance();
   }, [userInfo, selectedToken, smartAccount, customProvider, provider]);
 
-  const fetchLidoAPR = useCallback(async () => {
+  const fetchRocketPoolAPR = useCallback(async () => {
     try {
-      const response = await fetch(
-        "https://eth-api-holesky.testnet.fi/v1/protocol/steth/apr/sma"
-      );
+      const response = await fetch("https://testnet.rocketpool.net/api/holesky/payload");
       const data = await response.json();
-      const aprValue = data.data.smaApr;
+      const aprValue = parseFloat(data.rethAPR)
       return aprValue.toFixed(2) + "%";
     } catch (error) {
-      console.error("Lido APR 조회 실패:", error);
+      console.error("Rocket Pool APR 조회 실패:", error);
       return "0%";
     }
   }, []);
@@ -188,9 +192,9 @@ const StakingPage: React.FC = () => {
       try {
         let apr: string;
         switch (selectedToken) {
-          case "stETH":
-            apr = await fetchLidoAPR();
-            setApyRates((prev) => ({ ...prev, stETH: apr }));
+          case "rETH":
+            apr = await fetchRocketPoolAPR();
+            setApyRates((prev) => ({ ...prev, rETH: apr }));
             break;
           case "superOETH":
             apr = await fetchSuperOETHAPY();
@@ -207,16 +211,16 @@ const StakingPage: React.FC = () => {
     };
 
     fetchSelectedTokenAPR();
-  }, [selectedToken, fetchLidoAPR, fetchSuperOETHAPY, fetchListaAPY]);
+  }, [selectedToken, fetchRocketPoolAPR, fetchSuperOETHAPY, fetchListaAPY]);
 
   const tokenDisplayNames: { [key: string]: string } = {
-    stETH: "ETH",
+    rETH: "ETH",
     superOETH: "ETH",
     slisBNB: "BNB",
   };
 
   const tokens = [
-    { id: "stETH", name: "stETH", apy: apyRates.stETH },
+    { id: "rETH", name: "rETH", apy: apyRates.rETH },
     { id: "superOETH", name: "superOETH", apy: apyRates.superOETH },
     { id: "slisBNB", name: "slisBNB", apy: apyRates.slisBNB },
   ];
@@ -275,7 +279,7 @@ const StakingPage: React.FC = () => {
     return totalCost;
   };
 
-  const lidoStaking = useLidoStaking({
+  const rocketPoolStaking = useRocketPoolStaking({
     provider,
     smartAccount,
     customProvider,
@@ -315,17 +319,20 @@ const StakingPage: React.FC = () => {
       let transactionHash = "";
 
       switch (selectedToken) {
-        case "stETH":
-          transactionHash = await lidoStaking.stakeEth(amount, customProvider);
+        case "rETH":
+          transactionHash = await rocketPoolStaking.stake(
+            amount,
+            customProvider
+          );
           break;
         case "superOETH":
-          transactionHash = await superOETHStaking.stakeEth(
+          transactionHash = await superOETHStaking.stake(
             amount,
             customProvider
           );
           break;
         case "slisBNB":
-          transactionHash = await listaStaking.stakeBnb(amount, customProvider);
+          transactionHash = await listaStaking.stake(amount, customProvider);
           break;
       }
 
@@ -348,7 +355,7 @@ const StakingPage: React.FC = () => {
       let targetChain;
 
       switch (tokenId) {
-        case "stETH":
+        case "rETH":
           targetChain = EthereumHolesky;
           break;
         case "superOETH":
@@ -390,7 +397,7 @@ const StakingPage: React.FC = () => {
   // 체인 설정 가져오기 함수
   const getTargetChainConfig = (tokenId: string) => {
     switch (tokenId) {
-      case "stETH":
+      case "rETH":
         return {
           chainId: `0x${EthereumHolesky.id.toString(16)}`,
           chainName: "Ethereum Holesky",
@@ -427,23 +434,29 @@ const StakingPage: React.FC = () => {
           blockExplorerUrls: [BNBChain.blockExplorerUrl],
         };
       default:
-        return getTargetChainConfig("stETH");
+        return getTargetChainConfig("rETH");
     }
   };
 
   // 개별 토큰 환율 조회 함수
-  const fetchStEthRate = async () => {
+  const fetchRethRate = useCallback(async () => {
     try {
-      const response = await fetch(
-        "https://eth-api.lido.fi/v1/swap/one-inch?token=ETH"
+      if (!provider) return 1;
+
+      const ethersProvider = new ethers.providers.Web3Provider(provider as any);
+      const rETHContract = new ethers.Contract(
+        "0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1",
+        RocketPoolABI,
+        ethersProvider
       );
-      const data = await response.json();
-      return data.rate || 1;
+
+      const rETHAmount = await rETHContract.getExchangeRate();
+      return parseFloat(ethers.utils.formatEther(rETHAmount));
     } catch (error) {
-      console.error("stETH 환율 조회 실패:", error);
+      console.error("rETH 환율 조회 실패:", error);
       return 1;
     }
-  };
+  }, [provider]);
 
   const fetchSuperOEthRate = async () => {
     try {
@@ -507,11 +520,11 @@ const StakingPage: React.FC = () => {
       let rate: number;
 
       switch (selectedToken) {
-        case "stETH":
-          rate = await fetchStEthRate();
+        case "rETH":
+          rate = await fetchRethRate();
           setExchangeRates((prev) => ({
             ...prev,
-            stETH: Number(rate.toFixed(4)),
+            rETH: Number(rate.toFixed(4)),
           }));
           break;
         case "superOETH":
@@ -553,8 +566,8 @@ const StakingPage: React.FC = () => {
 
       // 각 토큰별 스테이킹 컴포넌트 사용
       switch (selectedToken) {
-        case "stETH":
-          transactionHash = await lidoStaking.unstake(
+        case "rETH":
+          transactionHash = await rocketPoolStaking.unstake(
             amount,
             customProvider,
           );
@@ -585,8 +598,8 @@ const StakingPage: React.FC = () => {
         try {
           let balance = 0;
           switch (selectedToken) {
-            case "stETH":
-              balance = await lidoStaking.fetchStakedBalance();
+            case "rETH":
+              balance = await rocketPoolStaking.fetchStakedBalance();
               break;
             case "superOETH":
               balance = await superOETHStaking.fetchStakedBalance();
@@ -613,8 +626,8 @@ const StakingPage: React.FC = () => {
           if (activeView === "stake") {
             // 스테이킹 시에는 스테이킹된 토큰 잔액을 보여줌
             switch (selectedToken) {
-              case "stETH":
-                balance = await lidoStaking.fetchStakedBalance();
+              case "rETH":
+                balance = await rocketPoolStaking.fetchStakedBalance();
                 break;
               case "superOETH":
                 balance = await superOETHStaking.fetchStakedBalance();

@@ -16,7 +16,7 @@ export const useListaStaking = ({
   amount,
   setTxHash,
 }: ListaStakingProps) => {
-  const stakeBnb = async (
+  const stake = async (
     amount: string,
     provider: ethers.providers.Web3Provider
   ): Promise<string> => {
@@ -107,7 +107,7 @@ export const useListaStaking = ({
   };
 
   return {
-    stakeBnb,
+    stake,
     unstake,
     fetchBalance,
     fetchStakedBalance,
