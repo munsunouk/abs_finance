@@ -751,4 +751,41 @@ export const StethEventsPartialAbi = [
     name: 'Transfer',
     type: 'event',
   },
+
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_ethXAmount',
+        type: 'uint256'
+      },
+      {
+        internalType: 'address',
+        name: '_owner',
+        type: 'address'
+      }
+    ],
+    name: 'requestWithdraw',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256'
+      }
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: '_receiver', type: 'address' },
+      { internalType: 'string', name: '_referralId', type: 'string' }
+    ],
+    name: 'deposit',
+    outputs: [
+      { internalType: 'uint256', name: '_shares', type: 'uint256' }
+    ],
+    stateMutability: 'payable',
+    type: 'function'
+  }
 ] as const;
