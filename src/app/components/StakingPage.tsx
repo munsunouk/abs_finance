@@ -737,7 +737,7 @@ const StakingPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex justify-between text-gray-400 text-sm">
-                <span>예상 수량</span>
+                <span>Estimated Amount</span>
                 <span>Balance: {parseFloat(outputBalance).toFixed(4)}</span>
               </div>
             </div>
@@ -781,7 +781,7 @@ const StakingPage: React.FC = () => {
       </div>
       {txHash && (
         <div className="mt-4 p-4 bg-white/5 rounded-xl">
-          <p className="text-white/60">트랜잭션 완료:</p>
+          <p className="text-white/60">Transaction Completed:</p>
           <a
             href={getExplorerUrl(txHash)}
             target="_blank"
