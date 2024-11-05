@@ -6,7 +6,6 @@ import {
   useConnect,
   useEthereum,
 } from "@particle-network/auth-core-modal";
-import { toast } from "react-toastify";
 import { Web3Provider } from "@ethersproject/providers";
 import { EthereumHolesky, Base, BNBChain } from "@particle-network/chains";
 import {
@@ -331,18 +330,8 @@ const StakingPage: React.FC = () => {
       }
 
       setTxHash(transactionHash);
-      toast.success("스테이킹이 성공적으로 완료되었습니.", {
-        position: "bottom-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      });
     } catch (error) {
       console.error(`스테이킹 실패: ${error}`);
-      toast.error("스테킹 중 오류가 발생했습니다.");
       setTxHash(null);
     } finally {
       setIsLoading(false);
@@ -378,7 +367,6 @@ const StakingPage: React.FC = () => {
         params: [{ chainId: `0x${targetChain.id.toString(16)}` }],
       });
 
-      toast.success("네트워크가 변경되었습니다.");
     } catch (error: any) {
       // 체인이 지갑에 없는 경우 추가
       if (error.code === 4902) {
@@ -390,11 +378,9 @@ const StakingPage: React.FC = () => {
           });
         } catch (addError) {
           console.error("체인 추가 실패:", addError);
-          toast.error("새 네트워크 추가에 실패했습니다.");
         }
       } else {
         console.error("체인 전환 실패:", error);
-        toast.error("네트워크 변경에 실패했습니다.");
       }
     } finally {
       setIsLoading(false);
@@ -586,18 +572,9 @@ const StakingPage: React.FC = () => {
       }
 
       setTxHash(transactionHash);
-      toast.success("언스테이킹이 성공적으로 완료되었습니다.", {
-        position: "bottom-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      });
+
     } catch (error) {
       console.error(`언스테이킹 실패: ${error}`);
-      toast.error("언스테이킹 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
