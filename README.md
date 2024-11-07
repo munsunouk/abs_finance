@@ -44,7 +44,7 @@ Our platform leverages Particle Connect's powerful features:
 
 ### Screenshots
 
-![ABS Finance UI](./public/abs-finance-ui.png)
+![ABS Finance UI](./public/demo_screenshots.png)
 
 ## Technical Architecture
 
