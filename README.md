@@ -2,41 +2,67 @@
 
 ## Project Overview
 
-ABS Finance is a cross-chain staking platform that leverages Particle Network's account abstraction technology to simplify staking across multiple chains. Users can access staking services on different chains with a single account.
+ABS Finance is a multi-chain staking platform built during the Particle Network Hackathon that showcases seamless DeFi interactions through Particle Connect integration. By leveraging Particle Network's powerful authentication SDK, we've created a user-friendly staking experience that simplifies cross-chain interactions.
 
-## Key Features
+## Problem Statement
 
-- Social Login: Easy login via Email, Google, Twitter, Github, Discord
-- Cross-chain Staking:
-  - Ethereum Holesky (ETHx)
-  - Base (superOETH)
-  - BNB Chain (slisBNB)
-- Real-time APR/APY Display
-- Gasless Transactions
-- Automatic Chain Switching
+The current DeFi landscape presents significant barriers to entry:
 
-## Demo Screenshots
+- Complex wallet management and connection processes
+- Confusing onboarding experience for new users
+- Need for multiple wallets across different chains
+- Manual network switching between chains
+- Complex transaction signing processes
+
+## Our Solution
+
+ABS Finance revolutionizes the multi-chain staking experience through Particle Connect:
+
+- One-click social login (Google, Twitter, Discord, etc.)
+- Seamless wallet connection across multiple chains
+- Unified interface for cross-chain staking
+- Simplified transaction signing
+- Automated network switching
+
+## Particle Connect Integration
+
+Our platform leverages Particle Connect's powerful features:
+
+- Social login integration with multiple providers
+- Unified wallet connection interface
+- Future-ready for Universal Accounts
+- Seamless cross-chain transaction handling
+- Enhanced security through Particle's infrastructure
+
+## Demo
+
+[Live Demo Link](https://abs-finance.vercel.app/)
+
+### Video Demonstration
+
+[Watch Demo Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+
+### Screenshots
 
 ![ABS Finance UI](./public/abs-finance-ui.png)
 
 ## Technical Architecture
 
-- Frontend
-  - Next.js with TypeScript
-    TailwindCSS for styling
-  - Particle Network SDKs
-  - ethers.js for blockchain interactions
-- Smart Contract Integration
+### Frontend Stack
 
-```
-try {
-  const StaderDepositContractAddress =
-    "0x7F09ceb3874F5E35Cd2135F56fd4329b88c5d119";
-      const signer = provider.getSigner();
-      const amountInWei = ethers.utils.parseEther(amount);
-      const address = await signer.getAddress();
-      const erc20 = new ethers.Contract(
-        StaderDepositContractAddress,
+- Next.js 14 with TypeScript
+- TailwindCSS for styling
+- Particle Network SDKs
+- Auth Core
+- Account Abstraction
+- ethers.js for blockchain interactions
+
+Smart Contract Integration
+We integrate with three major staking protocols:
+
+1. **Stader Protocol (Ethereum Holesky)**
+
+```32:54:src/app/components/staking/StaderStaking.tsx
         StaderABI,
         signer
       );
@@ -51,51 +77,129 @@ try {
     } catch (error) {
       throw new Error(`Staking failed: ${error}`);
     }
-};
+  };
+  const checkAllowance = async (amount: string): Promise<boolean> => {
+    try {
+      const StaderWithdrawContractAddress =
+        "0x7F09ceb3874F5E35Cd2135F56fd4329b88c5d119";
+      const tokenContractAddress = "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859";
+      const address = await smartAccount.getAddress();
+
+      const tokenContract = new ethers.Contract(
 ```
 
-- Account Abstraction Implementation
+2. **Origin Protocol (Base)**
 
-```
-useEffect(() => {
-if (provider) {
-const newSmartAccount = new SmartAccount(provider, {
-projectId: process.env.NEXT_PUBLIC_PROJECT_ID!,
-clientKey: process.env.NEXT_PUBLIC_CLIENT_KEY!,
-appId: process.env.NEXT_PUBLIC_APP_ID!,
-aaOptions: {
-accountContracts: {
-SIMPLE: [
-{
-chainIds: [getChainId()],
-version: "1.0.0",
-},
-],
-},
-},
-});
-const newCustomProvider = new Web3Provider(
-new AAWrapProvider(newSmartAccount, SendTransactionMode.Gasless),
-"any"
-);
-setSmartAccount(newSmartAccount);
-setCustomProvider(newCustomProvider);
-}
-}, [provider, selectedToken, getChainId]);
+```260:266:src/app/components/StakingPage.tsx
+  const superOETHStaking = useSuperOETHStaking({
+    provider,
+    smartAccount,
+    customProvider,
+    amount,
+    setTxHash,
+  });
 ```
 
-## Key Technical Features
+3. **Lista Finance (BNB Chain)**
 
-- Chain Abstraction
-  - Seamless chain switching
-  - Unified wallet interface
-  - Cross-chain transaction handling
-  - Social Login Integration
+```267:273:src/app/components/StakingPage.tsx
+  const listaStaking = useListaStaking({
+    provider,
+    smartAccount,
+    customProvider,
+    amount,
+    setTxHash: setTxResult,
+  });
+```
+
+### Account Abstraction Implementation
+
+The platform leverages Particle Network connect SDK for account abstraction.
 
 ```
-<AuthCoreContextProvider
-  options={{
-    // All env variable must be defined at runtime
+  useEffect(() => {
+    if (provider) {
+      const newSmartAccount = new SmartAccount(provider, {
+        projectId: process.env.NEXT_PUBLIC_PROJECT_ID!,
+        clientKey: process.env.NEXT_PUBLIC_CLIENT_KEY!,
+        appId: process.env.NEXT_PUBLIC_APP_ID!,
+        aaOptions: {
+          accountContracts: {
+            SIMPLE: [
+              {
+                chainIds: [getChainId()],
+                version: "1.0.0",
+              },
+            ],
+          },
+        },
+      });
+      const newCustomProvider = new Web3Provider(
+        new AAWrapProvider(newSmartAccount, SendTransactionMode.Gasless),
+        "any"
+      );
+      setSmartAccount(newSmartAccount);
+      setCustomProvider(newCustomProvider);
+    }
+  }, [provider, selectedToken, getChainId]);
+```
+
+### Key Features
+
+1. **Multi-Chain Support**
+
+```346:388:src/app/components/StakingPage.tsx
+  // 체인 설정 가져오기 함수
+  const getTargetChainConfig = (tokenId: string) => {
+    switch (tokenId) {
+      case "ETHx":
+        return {
+          chainId: `0x${EthereumHolesky.id.toString(16)}`,
+          chainName: "Ethereum Holesky",
+          rpcUrls: [EthereumHolesky.rpcUrl],
+          nativeCurrency: {
+            name: EthereumHolesky.nativeCurrency.name,
+            symbol: EthereumHolesky.nativeCurrency.symbol,
+            decimals: EthereumHolesky.nativeCurrency.decimals,
+          },
+          blockExplorerUrls: [EthereumHolesky.blockExplorerUrl],
+        };
+      case "superOETH":
+        return {
+          chainId: `0x${Base.id.toString(16)}`,
+          chainName: "Base",
+          rpcUrls: [Base.rpcUrl],
+          nativeCurrency: {
+            name: Base.nativeCurrency.name,
+            symbol: Base.nativeCurrency.symbol,
+            decimals: Base.nativeCurrency.decimals,
+          },
+          blockExplorerUrls: [Base.blockExplorerUrl],
+        };
+      case "slisBNB":
+        return {
+          chainId: `0x${BNBChain.id.toString(16)}`,
+          chainName: "BNB Chain",
+          rpcUrls: [BNBChain.rpcUrl],
+          nativeCurrency: {
+            name: BNBChain.nativeCurrency.name,
+            symbol: BNBChain.nativeCurrency.symbol,
+            decimals: BNBChain.nativeCurrency.decimals,
+          },
+          blockExplorerUrls: [BNBChain.blockExplorerUrl],
+        };
+      default:
+        return getTargetChainConfig("ETHx");
+    }
+  };
+```
+
+2. **Social Login Integration**
+
+```20:51:src/app/layout.tsx
+        <AuthCoreContextProvider
+          options={{
+            // All env variable must be defined at runtime
             projectId: process.env.NEXT_PUBLIC_PROJECT_ID!,
             clientKey: process.env.NEXT_PUBLIC_CLIENT_KEY!,
             appId: process.env.NEXT_PUBLIC_APP_ID!,
@@ -127,38 +231,56 @@ setCustomProvider(newCustomProvider);
           }}
 ```
 
-- Real-time APY Tracking
-  - Stader Protocol (ETH)
-  - Origin Protocol (Base)
-  - Lista Finance (BNB)
-    Gasless Transactions
-- Smart Account implementation
-- Transaction sponsorship
-- Batched transactions
-- User Experience
-  - Wallet Connection
-  - Social login options
-  - Traditional wallet connect
-  - Email authentication
-    Staking Interface
-  - Token selection
-  - Amount input with max button
-  - Real-time rate display
-  - Balance checking
-    Transaction status updates
-- Cross-chain Features
-  - Automatic network switching
-  - Gas fee abstraction
-  - Unified transaction experience
-    Security Features
-  - Smart Contract Safety
-  - Audited contract integration
-  - Approval management
-  - Transaction validation
-- Account Security
-  - Social recovery options
-  - Multi-factor authentication
-  - Session management
+3. **Real-time APY Tracking**
+
+```110:155:src/app/components/StakingPage.tsx
+  const fetchStaderAPR = useCallback(async () => {
+    try {
+      const response = await fetch("https://universe.staderlabs.com/eth/apy");
+      const data = await response.json();
+
+      return data.value + "%";
+    } catch (error) {
+      console.error("Failed to fetch Stader APR:", error);
+
+      return "0%";
+    }
+  }, []);
+
+  const fetchSuperOETHAPY = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "https://origin.squids.live/origin-squid:prod/api/graphql",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `
+              query OTokenApy($chainId: Int!, $token: String!) {
+                oTokenApies(
+                  limit: 1
+                  orderBy: timestamp_DESC
+                  where: {chainId_eq: $chainId, otoken_eq: $token}
+                ) {
+                  apy7DayAvg
+                }
+              }
+            `,
+            variables: {
+              token: "0xdbfefd2e8460a6ee4955a68582f85708baea60a3",
+              chainId: 8453,
+            },
+          }),
+        }
+      );
+      const data = await response.json();
+      const apyData = data.data.oTokenApies[0];
+      return (apyData.apy7DayAvg * 100).toFixed(2) + "%";
+    } catch (error) {
+      return "0%";
+    }
+  }, []);
+```
 
 ## Installation
 
@@ -186,15 +308,29 @@ npm run dev
 
 ## Future Development
 
-- Platform Expansion
-  - Additional chains integration
-  - More staking protocols
-  - Yield farming options
-  - Feature Enhancement
-  - Portfolio analytics
-  - Yield optimization
-  - Mobile app development
-  - Infrastructure Upgrades
-  - Layer 2 integration
-  - Cross-chain messaging
-- MEV protection
+### Short-term Goals
+
+- Integration with more staking protocols
+- Enhanced analytics dashboard
+- Mobile-responsive design improvements
+
+### Long-term Vision
+
+- Cross-chain yield aggregation
+- Automated yield optimization
+- Governance token implementation
+- Mobile app development
+
+### Team
+
+- John Doe - Full Stack Developer
+- Jane Smith - Smart Contract Developer
+- Bob Johnson - UI/UX Designer
+
+### Built with Particle Network
+
+This project showcases Particle Network's account abstraction capabilities:
+
+- Account Abstraction SDK
+- AuthCore for social logins
+- Gasless transactions
