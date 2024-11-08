@@ -40,7 +40,7 @@ Our platform leverages Particle Connect's powerful features:
 
 ### Video Demonstration
 
-[Watch Demo Video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+[Watch Demo Video](https://youtu.be/u4cZ0Iq3780)
 
 ### Screenshots
 
