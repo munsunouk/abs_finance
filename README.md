@@ -323,9 +323,8 @@ npm run dev
 
 ### Team
 
-- John Doe - Full Stack Developer
-- Jane Smith - Smart Contract Developer
-- Bob Johnson - UI/UX Designer
+- Munsunouk
+- Atakan Alemdar
 
 ### Built with Particle Network
 
